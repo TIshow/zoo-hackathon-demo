@@ -209,6 +209,20 @@ export default function Home() {
     }
   }
 
+  // マイルストーンIDからタイトルを取得する関数
+  const getMilestoneTitle = (id: string): string => {
+    const milestoneData: Record<string, string> = {
+      chatty_friend: 'おしゃべり好き',
+      close_buddy: '親密な友達',
+      regular_visitor: '常連さん',
+      weekly_friend: '1週間の友',
+      early_bird: '朝の友達',
+      night_owl: '夜ふかし友達',
+      long_talker: 'おしゃべり上手'
+    }
+    return milestoneData[id] || id
+  }
+
   const isDisabled = isSpeaking || isThinking
 
   return (
@@ -311,7 +325,7 @@ export default function Home() {
                   <div>❤️ よく聞く質問: {pandaMemory.favoriteQuestions[0].question}</div>
                 )}
                 {pandaMemory.specialUnlocks.length > 0 && (
-                  <div>🏆 解放済み: {pandaMemory.specialUnlocks.join(', ')}</div>
+                  <div>🏆 解放済み: {pandaMemory.specialUnlocks.map(id => getMilestoneTitle(id)).join(', ')}</div>
                 )}
               </div>
             </div>
