@@ -28,7 +28,8 @@ export class PandaVoiceRecorder {
       this.analyser.connect(destination)
 
       const bufferLength = this.analyser.frequencyBinCount
-      this.dataArray = new Uint8Array(bufferLength)
+      const ab = new ArrayBuffer(bufferLength);
+      this.dataArray = new Uint8Array(ab);
 
       // MediaRecorder を設定
       const options = {
@@ -114,7 +115,7 @@ export class PandaVoiceRecorder {
       return []
     }
 
-    this.analyser.getByteFrequencyData(this.dataArray)
+    this.analyser.getByteFrequencyData(this.dataArray as Uint8Array);
     return Array.from(this.dataArray).map(value => value / 255) // 0-1に正規化
   }
 
