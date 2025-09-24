@@ -218,7 +218,7 @@ export default function Home() {
           {/* ヘッダー */}
           <div className="text-center">
             <h1 className="text-3xl font-bold text-orange-900 mb-2">
-              🐼 どうぶつトーク！Nishiyama Edition
+              🐼 しゃべれっさー！ 🐼
             </h1>
             <p className="text-sm text-gray-600 mb-1">
               レッサーパンダと&quot;おしゃべり&quot;（模擬翻訳）
