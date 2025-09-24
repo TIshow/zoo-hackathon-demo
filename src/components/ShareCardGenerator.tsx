@@ -224,6 +224,7 @@ export default function ShareCardGenerator({ cardData, audioContext, onClose }: 
               {/* 生成されたカードプレビュー */}
               {shareUrls && (
                 <div className="text-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={shareUrls.imageUrl}
                     alt="親密度達成カード"
@@ -244,7 +245,7 @@ export default function ShareCardGenerator({ cardData, audioContext, onClose }: 
               {/* シェアオプション */}
               <div className="space-y-2">
                 {/* ネイティブシェア */}
-                {navigator.share && (
+                {typeof navigator !== 'undefined' && 'share' in navigator && (
                   <button
                     onClick={handleNativeShare}
                     className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"

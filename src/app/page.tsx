@@ -22,6 +22,7 @@ import QuickChips from '@/components/QuickChips'
 import IntimacyGauge from '@/components/IntimacyGauge'
 import MilestoneNotification from '@/components/MilestoneNotification'
 import ShareCardGenerator from '@/components/ShareCardGenerator'
+import VoiceInput from '@/components/VoiceInput'
 
 export default function Home() {
   const [userInput, setUserInput] = useState('')
@@ -202,6 +203,12 @@ export default function Home() {
     setShowShareCard(true)
   }
 
+  const handleVoiceInput = async (voiceText: string) => {
+    if (!isSpeaking && !isThinking) {
+      await performSpeech(voiceText)
+    }
+  }
+
   const isDisabled = isSpeaking || isThinking
 
   return (
@@ -243,6 +250,13 @@ export default function Home() {
               {isThinking ? '考え中...' : isSpeaking ? '鳴いています...' : '話しかける'}
             </button>
           </form>
+
+          {/* 音声入力 */}
+          <VoiceInput
+            onVoiceInput={handleVoiceInput}
+            disabled={isDisabled}
+            isProcessing={isSpeaking || isThinking}
+          />
 
           {/* プリセット質問 */}
           <QuickChips

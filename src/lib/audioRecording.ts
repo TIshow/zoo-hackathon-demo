@@ -114,7 +114,7 @@ export class PandaVoiceRecorder {
       return []
     }
 
-    this.analyser.getByteFrequencyData(this.dataArray)
+    this.analyser.getByteFrequencyData(this.dataArray as any)
     return Array.from(this.dataArray).map(value => value / 255) // 0-1に正規化
   }
 
@@ -152,7 +152,7 @@ export class PandaVoiceRecorder {
 export async function recordPandaSpeech(
   audioContext: AudioContext,
   audioUrl: string,
-  speechParams: any // SpeechParams from pandaSpeech.ts
+  speechParams: { grainCount?: number; pitchVariation?: number; useReverb?: boolean }
 ): Promise<RecordingResult> {
 
   const recorder = new PandaVoiceRecorder(audioContext)
@@ -160,8 +160,7 @@ export async function recordPandaSpeech(
   try {
     await recorder.setupRecording()
 
-    // 動的インポートで speakLikePanda を使用
-    const { speakLikePanda, loadAudioBuffer } = await import('./pandaSpeech')
+    // 録音用に改造された粒合成関数を呼び出し
 
     // 録音開始
     recorder.startRecording()
@@ -187,7 +186,7 @@ export async function recordPandaSpeech(
 async function speakLikePandaForRecording(
   context: AudioContext,
   audioUrl: string,
-  params: any,
+  params: { grainCount?: number; pitchVariation?: number; useReverb?: boolean },
   recorder: PandaVoiceRecorder
 ): Promise<void> {
 
@@ -195,7 +194,6 @@ async function speakLikePandaForRecording(
 
   try {
     const audioBuffer = await loadAudioBuffer(context, audioUrl)
-    const bufferDuration = audioBuffer.duration
     const grainCount = Math.floor(Math.random() * 4) + 2
 
     // 各粒の再生をPromiseで管理
@@ -226,7 +224,7 @@ async function speakLikePandaForRecording(
 function createRecordableGrain(
   context: AudioContext,
   audioBuffer: AudioBuffer,
-  params: any,
+  params: { grainCount?: number; pitchVariation?: number; useReverb?: boolean },
   recorder: PandaVoiceRecorder,
   onComplete: () => void
 ): void {
