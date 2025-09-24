@@ -216,7 +216,7 @@ export class VoiceLevelMonitor {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private microphone: MediaStreamAudioSourceNode | null = null;
-  private dataArray: Uint8Array | null = null;
+  private dataArray: Uint8Array<ArrayBuffer> | null = null;
   private animationFrame: number | null = null;
   private stream: MediaStream | null = null;
 
@@ -239,7 +239,9 @@ export class VoiceLevelMonitor {
       microphone.connect(analyser);
 
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
+      // ★ ArrayBuffer を明示してから Uint8Array を作る（型を ArrayBuffer に固定）
+      const ab: ArrayBuffer = new ArrayBuffer(bufferLength);
+      const dataArray: Uint8Array<ArrayBuffer> = new Uint8Array(ab);
 
       // すべて揃ってからフィールドに反映（null検査を通す）
       this.analyser = analyser;
