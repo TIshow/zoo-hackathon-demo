@@ -1,303 +1,356 @@
-// Web Speech API による音声認識システム
-// リアルタイム音声入力でパンダとの自然な会話を実現
+// src/lib/speechRecognition.ts
+// Web Speech API による音声認識システム（自己完結・any不使用）
 
-// グローバル型定義を削除し、any型を使用してブラウザ互換性を優先
+/* ====== 1) ローカル最小型（SpeechRecognition系） ====== */
+interface SRAlternative {
+  transcript: string;
+  confidence: number;
+}
+interface SRResult {
+  isFinal: boolean;
+  length: number;
+  0: SRAlternative;
+  [index: number]: SRAlternative;
+}
+interface SRResultList {
+  length: number;
+  0: SRResult;
+  [index: number]: SRResult;
+}
+interface SREvent extends Event {
+  results: SRResultList;
+  resultIndex: number;
+}
+interface SRErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
+interface SRGrammarList {
+  length: number;
+  addFromString(source: string, weight?: number): void;
+  addFromURI(src: string, weight?: number): void;
+  item(index: number): { src: string; weight: number };
+  [index: number]: { src: string; weight: number };
+}
+interface SR extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  grammars: SRGrammarList;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onaudiostart: ((ev: Event) => void) | null;
+  onsoundstart: ((ev: Event) => void) | null;
+  onspeechstart: ((ev: Event) => void) | null;
+  onspeechend: ((ev: Event) => void) | null;
+  onsoundend: ((ev: Event) => void) | null;
+  onaudioend: ((ev: Event) => void) | null;
+  onresult: ((ev: SREvent) => void) | null;
+  onnomatch: ((ev: SREvent) => void) | null;
+  onerror: ((ev: SRErrorEvent) => void) | null;
+  onstart: ((ev: Event) => void) | null;
+  onend: ((ev: Event) => void) | null;
+}
+type SRCtor = new () => SR;
 
-export interface SpeechRecognitionResult {
-  transcript: string
-  confidence: number
-  isFinal: boolean
+/** window/globalThis から SR コンストラクタを安全に取得 */
+function getSpeechRecognitionCtor(): SRCtor | undefined {
+  const g = globalThis as unknown as {
+    SpeechRecognition?: SRCtor;
+    webkitSpeechRecognition?: SRCtor;
+  };
+  return g.SpeechRecognition ?? g.webkitSpeechRecognition;
 }
 
+/* ====== 2) 公開用の軽量結果型 ====== */
+export interface SpeechRecognitionResultLite {
+  transcript: string;
+  confidence: number;
+  isFinal: boolean;
+}
 export interface SpeechRecognitionConfig {
-  language: string
-  continuous: boolean
-  interimResults: boolean
-  maxAlternatives: number
+  language: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
 }
 
+/* ====== 3) 音声認識マネージャ ====== */
 export class VoiceInputManager {
-  private recognition: any | null = null
-  private isListening: boolean = false
-  private onResult: ((result: SpeechRecognitionResult) => void) | null = null
-  private onError: ((error: string) => void) | null = null
-  private onStart: (() => void) | null = null
-  private onEnd: (() => void) | null = null
+  private recognition: SR | null = null;
+  private isListening = false;
+
+  private onResult: ((result: SpeechRecognitionResultLite) => void) | null = null;
+  private onError: ((error: string) => void) | null = null;
+  private onStart: (() => void) | null = null;
+  private onEnd: (() => void) | null = null;
 
   constructor() {
-    // ブラウザの Speech Recognition API をチェック
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
-
-    if (!SpeechRecognition) {
-      console.warn('Speech Recognition API not supported')
-      return
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) {
+      console.warn('Speech Recognition API not supported');
+      return;
     }
-
-    this.recognition = new SpeechRecognition()
-    this.setupRecognition()
+    this.recognition = new Ctor();
+    this.setupRecognition();
   }
 
   private setupRecognition(): void {
-    if (!this.recognition) return
+    const rec = this.recognition;
+    if (!rec) return;
 
-    // 基本設定
-    this.recognition.lang = 'ja-JP'
-    this.recognition.continuous = true  // 連続認識
-    this.recognition.interimResults = true  // 中間結果も取得
-    this.recognition.maxAlternatives = 1
+    rec.lang = 'ja-JP';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
 
-    // イベントハンドラー
-    this.recognition.onstart = () => {
-      this.isListening = true
-      this.onStart?.()
-    }
+    rec.onstart = () => {
+      this.isListening = true;
+      this.onStart?.();
+    };
+    rec.onend = () => {
+      this.isListening = false;
+      this.onEnd?.();
+    };
 
-    this.recognition.onend = () => {
-      this.isListening = false
-      this.onEnd?.()
-    }
-
-    this.recognition.onresult = (event: any) => {
-      const results = Array.from(event.results)
-
-      for (let i = event.resultIndex; i < results.length; i++) {
-        const result = results[i] as any
-        const transcript = result[0].transcript
-
+    rec.onresult = (event: SREvent) => {
+      const { results, resultIndex } = event;
+      for (let i = resultIndex; i < results.length; i++) {
+        const res = results[i];
+        const alt0 = res[0];
         this.onResult?.({
-          transcript: transcript.trim(),
-          confidence: result[0].confidence || 0,
-          isFinal: result.isFinal
-        })
+          transcript: (alt0?.transcript ?? '').trim(),
+          confidence: alt0?.confidence ?? 0,
+          isFinal: res.isFinal,
+        });
       }
-    }
+    };
 
-    this.recognition.onerror = (event: any) => {
-      const errorMessage = this.getErrorMessage(event.error)
-      this.onError?.(errorMessage)
-    }
-
-    this.recognition.onnomatch = () => {
-      this.onError?.('音声を認識できませんでした')
-    }
+    rec.onerror = (event: SRErrorEvent) => {
+      this.onError?.(this.getErrorMessage(event.error));
+    };
+    rec.onnomatch = () => this.onError?.('音声を認識できませんでした');
   }
 
-  // 音声認識開始
   async startListening(
-    onResult: (result: SpeechRecognitionResult) => void,
+    onResult: (result: SpeechRecognitionResultLite) => void,
     onError?: (error: string) => void,
     onStart?: () => void,
     onEnd?: () => void
   ): Promise<void> {
-    if (!this.recognition) {
-      throw new Error('Speech Recognition not supported')
-    }
+    const rec = this.recognition;
+    if (!rec) throw new Error('Speech Recognition not supported');
 
-    if (this.isListening) {
-      this.stopListening()
-    }
+    if (this.isListening) this.stopListening();
 
-    this.onResult = onResult
-    this.onError = onError || null
-    this.onStart = onStart || null
-    this.onEnd = onEnd || null
+    this.onResult = onResult;
+    this.onError = onError ?? null;
+    this.onStart = onStart ?? null;
+    this.onEnd = onEnd ?? null;
 
     try {
-      this.recognition.start()
+      rec.start();
     } catch {
-      throw new Error('Failed to start speech recognition')
+      throw new Error('Failed to start speech recognition');
     }
   }
 
-  // 音声認識停止
   stopListening(): void {
-    if (this.recognition && this.isListening) {
-      this.recognition.stop()
-    }
+    const rec = this.recognition;
+    if (rec && this.isListening) rec.stop();
   }
 
-  // 認識状態の取得
   getIsListening(): boolean {
-    return this.isListening
+    return this.isListening;
   }
 
-  // 対応ブラウザチェック
   static isSupported(): boolean {
-    return !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    return !!getSpeechRecognitionCtor();
   }
 
-  // マイクへのアクセス権限をリクエスト
   static async requestMicrophonePermission(): Promise<boolean> {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      // 権限取得後はストリームを停止
-      stream.getTracks().forEach(track => track.stop())
-      return true
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      return true;
     } catch {
-      return false
+      return false;
     }
   }
 
   private getErrorMessage(error: string): string {
     switch (error) {
       case 'no-speech':
-        return '音声が検出されませんでした'
+        return '音声が検出されませんでした';
       case 'audio-capture':
-        return 'マイクにアクセスできません'
+        return 'マイクにアクセスできません';
       case 'not-allowed':
-        return 'マイクの使用が許可されていません'
+        return 'マイクの使用が許可されていません';
       case 'network':
-        return 'ネットワークエラーが発生しました'
+        return 'ネットワークエラーが発生しました';
       case 'aborted':
-        return '音声認識が中断されました'
+        return '音声認識が中断されました';
       default:
-        return `音声認識エラー: ${error}`
+        return `音声認識エラー: ${error}`;
     }
   }
 }
 
-// 音声の活性レベルを監視するクラス
+/* ====== 4) 音声レベルモニタ ====== */
+function getAudioContextCtor():
+  | (new (contextOptions?: AudioContextOptions) => AudioContext)
+  | undefined {
+  const g = globalThis as unknown as {
+    AudioContext?: new (contextOptions?: AudioContextOptions) => AudioContext;
+    webkitAudioContext?: new (contextOptions?: AudioContextOptions) => AudioContext;
+  };
+  return g.AudioContext ?? g.webkitAudioContext;
+}
+
 export class VoiceLevelMonitor {
-  private audioContext: AudioContext | null = null
-  private analyser: AnalyserNode | null = null
-  private microphone: MediaStreamAudioSourceNode | null = null
-  private dataArray: Uint8Array | null = null
-  private animationFrame: number | null = null
-  private stream: MediaStream | null = null
+  private audioContext: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private microphone: MediaStreamAudioSourceNode | null = null;
+  private dataArray: Uint8Array | null = null;
+  private animationFrame: number | null = null;
+  private stream: MediaStream | null = null;
 
   async initialize(): Promise<void> {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      this.audioContext = new AudioContext()
-      this.analyser = this.audioContext.createAnalyser()
-      this.microphone = this.audioContext.createMediaStreamSource(this.stream)
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      this.analyser.fftSize = 256
-      this.analyser.smoothingTimeConstant = 0.8
-      this.microphone.connect(this.analyser)
+      const Ctor = getAudioContextCtor();
+      if (!Ctor) throw new Error('Web Audio API not supported');
+      const ctx = new Ctor();
+      this.audioContext = ctx;
 
-      const bufferLength = this.analyser.frequencyBinCount
-      this.dataArray = new Uint8Array(bufferLength)
+      if (!this.stream) throw new Error('No audio stream');
+
+      const analyser = ctx.createAnalyser();
+      const microphone = ctx.createMediaStreamSource(this.stream);
+
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      microphone.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      // すべて揃ってからフィールドに反映（null検査を通す）
+      this.analyser = analyser;
+      this.microphone = microphone;
+      this.dataArray = dataArray;
     } catch {
-      throw new Error('Failed to initialize voice level monitor')
+      throw new Error('Failed to initialize voice level monitor');
     }
   }
 
   startMonitoring(onLevelUpdate: (level: number) => void): void {
-    if (!this.analyser || !this.dataArray) return
+    const analyser = this.analyser;
+    const dataArray = this.dataArray;
+    if (!analyser || !dataArray) return;
 
     const updateLevel = () => {
-      this.analyser!.getByteFrequencyData(this.dataArray! as any)
+      analyser.getByteFrequencyData(dataArray);
 
       // 音量レベルを計算 (0-100)
-      let sum = 0
-      for (let i = 0; i < this.dataArray!.length; i++) {
-        sum += this.dataArray![i]
-      }
-      const average = sum / this.dataArray!.length
-      const level = Math.min(100, (average / 255) * 200) // 感度調整
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+      const average = sum / dataArray.length;
+      const level = Math.min(100, (average / 255) * 200); // 感度調整
 
-      onLevelUpdate(level)
-      this.animationFrame = requestAnimationFrame(updateLevel)
-    }
+      onLevelUpdate(level);
+      this.animationFrame = requestAnimationFrame(updateLevel);
+    };
 
-    updateLevel()
+    updateLevel();
   }
 
   stopMonitoring(): void {
-    if (this.animationFrame) {
-      cancelAnimationFrame(this.animationFrame)
-      this.animationFrame = null
+    const raf = this.animationFrame;
+    if (raf) {
+      cancelAnimationFrame(raf);
+      this.animationFrame = null;
     }
   }
 
   cleanup(): void {
-    this.stopMonitoring()
+    this.stopMonitoring();
 
     if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop())
-      this.stream = null
+      this.stream.getTracks().forEach((track) => track.stop());
+      this.stream = null;
     }
-
     if (this.audioContext) {
-      this.audioContext.close()
-      this.audioContext = null
+      this.audioContext.close();
+      this.audioContext = null;
     }
 
-    this.analyser = null
-    this.microphone = null
-    this.dataArray = null
+    this.analyser = null;
+    this.microphone = null;
+    this.dataArray = null;
   }
 }
 
-// 音声入力のバッファリング・デバウンス処理
+/* ====== 5) バッファリング＆デバウンス ====== */
 export class SpeechBuffer {
-  private buffer: string = ''
-  private debounceTimer: NodeJS.Timeout | null = null
-  private onFinalResult: ((text: string) => void) | null = null
+  private buffer = '';
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private onFinalResult: ((text: string) => void) | null = null;
 
   constructor(
-    private debounceMs: number = 1500, // 1.5秒で確定
-    private minLength: number = 2 // 最小文字数
+    private debounceMs: number = 1500,
+    private minLength: number = 2
   ) {}
 
-  addResult(result: SpeechRecognitionResult): void {
+  addResult(result: SpeechRecognitionResultLite): void {
     if (result.isFinal) {
-      // 最終結果の場合
-      const finalText = result.transcript.trim()
-      if (finalText.length >= this.minLength) {
-        this.flushBuffer(finalText)
-      }
+      const finalText = result.transcript.trim();
+      if (finalText.length >= this.minLength) this.flushBuffer(finalText);
     } else {
-      // 中間結果の場合
-      this.buffer = result.transcript.trim()
-      this.scheduleFlush()
+      this.buffer = result.transcript.trim();
+      this.scheduleFlush();
     }
   }
 
   private scheduleFlush(): void {
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
-    }
-
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
-      if (this.buffer.length >= this.minLength) {
-        this.flushBuffer(this.buffer)
-      }
-    }, this.debounceMs)
+      if (this.buffer.length >= this.minLength) this.flushBuffer(this.buffer);
+    }, this.debounceMs);
   }
 
   private flushBuffer(text: string): void {
     if (this.onFinalResult && text.length >= this.minLength) {
-      this.onFinalResult(text)
+      this.onFinalResult(text);
     }
-    this.buffer = ''
+    this.buffer = '';
     if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
-      this.debounceTimer = null
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
     }
   }
 
   setOnFinalResult(callback: (text: string) => void): void {
-    this.onFinalResult = callback
+    this.onFinalResult = callback;
   }
 
   getCurrentBuffer(): string {
-    return this.buffer
+    return this.buffer;
   }
 
   clear(): void {
-    this.buffer = ''
+    this.buffer = '';
     if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
-      this.debounceTimer = null
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
     }
   }
 
   cleanup(): void {
-    this.clear()
-    this.onFinalResult = null
+    this.clear();
+    this.onFinalResult = null;
   }
 }

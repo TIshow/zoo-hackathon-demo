@@ -114,7 +114,7 @@ export class PandaVoiceRecorder {
       return []
     }
 
-    this.analyser.getByteFrequencyData(this.dataArray as any)
+    this.analyser.getByteFrequencyData(this.dataArray)
     return Array.from(this.dataArray).map(value => value / 255) // 0-1に正規化
   }
 
