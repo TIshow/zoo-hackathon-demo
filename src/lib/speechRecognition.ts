@@ -70,6 +70,9 @@ export interface SpeechRecognitionResultLite {
   confidence: number;
   isFinal: boolean;
 }
+
+export type SpeechRecognitionResult = SpeechRecognitionResultLite;
+
 export interface SpeechRecognitionConfig {
   language: string;
   continuous: boolean;
