@@ -28,7 +28,7 @@ export class PandaVoiceRecorder {
       this.analyser.connect(destination)
 
       const bufferLength = this.analyser.frequencyBinCount
-      const ab = new ArrayBuffer(bufferLength);
+      const ab: ArrayBuffer = new ArrayBuffer(bufferLength);
       this.dataArray = new Uint8Array(ab);
 
       // MediaRecorder を設定
@@ -111,12 +111,19 @@ export class PandaVoiceRecorder {
 
   // 波形データを取得
   private getWaveformData(): number[] {
-    if (!this.analyser || !this.dataArray) {
-      return []
-    }
+    if (!this.analyser || !this.dataArray) return [];
 
-    this.analyser.getByteFrequencyData(this.dataArray as Uint8Array);
-    return Array.from(this.dataArray).map(value => value / 255) // 0-1に正規化
+    // ★ ArrayBuffer ベースのビューを作ってから渡す（byteOffset/byteLengthも維持）
+    const arrayForAPI = new Uint8Array(
+      this.dataArray.buffer as ArrayBuffer,
+      this.dataArray.byteOffset,
+      this.dataArray.byteLength
+    );
+
+    this.analyser.getByteFrequencyData(arrayForAPI);
+
+    // 0..1 に正規化した配列を返す（arrayForAPI を基準に）
+    return Array.from(arrayForAPI).map(v => v / 255);
   }
 
   // サポートされている MIME タイプを取得
