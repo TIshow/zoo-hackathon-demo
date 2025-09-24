@@ -6,6 +6,7 @@ interface IntimacyGaugeProps {
   relationshipName: string
   message: string
   isAnimating?: boolean
+  onShareCard?: () => void
 }
 
 export default function IntimacyGauge({
@@ -13,7 +14,8 @@ export default function IntimacyGauge({
   totalConversations,
   relationshipName,
   message,
-  isAnimating = false
+  isAnimating = false,
+  onShareCard
 }: IntimacyGaugeProps) {
   const [displayLevel, setDisplayLevel] = useState(0)
   const [showLevelUp, setShowLevelUp] = useState(false)
@@ -172,6 +174,21 @@ export default function IntimacyGauge({
           </div>
         </div>
       </div>
+
+      {/* シェアカードボタン */}
+      {displayLevel >= 20 && onShareCard && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <button
+            onClick={onShareCard}
+            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-purple-600 hover:to-pink-600 transition-all shadow-md"
+          >
+            🎉 達成カードを作成・シェア
+          </button>
+          <p className="text-xs text-gray-500 text-center mt-1">
+            親密度の記録を友達とシェアしよう！
+          </p>
+        </div>
+      )}
     </div>
   )
 }

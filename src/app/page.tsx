@@ -21,6 +21,7 @@ import Bubble from '@/components/Bubble'
 import QuickChips from '@/components/QuickChips'
 import IntimacyGauge from '@/components/IntimacyGauge'
 import MilestoneNotification from '@/components/MilestoneNotification'
+import ShareCardGenerator from '@/components/ShareCardGenerator'
 
 export default function Home() {
   const [userInput, setUserInput] = useState('')
@@ -36,6 +37,7 @@ export default function Home() {
   const [sessionStartTime, setSessionStartTime] = useState<Date>(new Date())
   const [newUnlocks, setNewUnlocks] = useState<string[]>([])
   const [showMilestone, setShowMilestone] = useState(false)
+  const [showShareCard, setShowShareCard] = useState(false)
 
   const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -196,6 +198,10 @@ export default function Home() {
     setAutoSpeakEnabled(!autoSpeakEnabled)
   }
 
+  const handleShareCard = () => {
+    setShowShareCard(true)
+  }
+
   const isDisabled = isSpeaking || isThinking
 
   return (
@@ -251,6 +257,7 @@ export default function Home() {
             relationshipName={getIntimacyLevelName(pandaMemory.intimacyLevel)}
             message={getIntimacyMessage(pandaMemory.intimacyLevel)}
             isAnimating={intimacyAnimating}
+            onShareCard={handleShareCard}
           />
 
           {/* 自動発話トグル */}
@@ -316,6 +323,24 @@ export default function Home() {
             setShowMilestone(false)
             setNewUnlocks([])
           }}
+        />
+      )}
+
+      {/* シェアカード生成 */}
+      {showShareCard && (
+        <ShareCardGenerator
+          cardData={{
+            intimacyLevel: pandaMemory.intimacyLevel,
+            intimacyLevelName: getIntimacyLevelName(pandaMemory.intimacyLevel),
+            totalConversations: pandaMemory.totalConversations,
+            uniqueDays: pandaMemory.uniqueDays,
+            consecutiveDays: pandaMemory.consecutiveDays,
+            specialUnlocks: pandaMemory.specialUnlocks,
+            relationshipMessage: getIntimacyMessage(pandaMemory.intimacyLevel),
+            timestamp: new Date()
+          }}
+          audioContext={audioContextRef.current}
+          onClose={() => setShowShareCard(false)}
         />
       )}
     </div>
