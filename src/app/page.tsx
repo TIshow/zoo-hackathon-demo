@@ -80,7 +80,7 @@ export default function Home() {
       )
 
       // 粒合成による音声再生（学習調整版）
-      await speakLikePanda(audioContextRef.current, reply.src, intimacyAdjustedParams)
+      const actualDuration = await speakLikePanda(audioContextRef.current, reply.src, intimacyAdjustedParams)
 
       // 翻訳表示
       setCurrentReply(reply)
@@ -124,11 +124,12 @@ export default function Home() {
         setSessionStartTime(new Date())
       }
 
-      // 音声の長さを推定して発話終了を管理
-      const estimatedDuration = (intimacyAdjustedParams.grainCount || 3) * 0.5 + 1
+      // 実際の音声時間に基づいて発話終了を管理（余裕を持たせて）
+      const finalDuration = actualDuration + 0.5 // 0.5秒の余裕を追加
+
       setTimeout(() => {
         setIsSpeaking(false)
-      }, estimatedDuration * 1000)
+      }, finalDuration * 1000)
 
     } catch (error) {
       console.error('Speech synthesis failed:', error)

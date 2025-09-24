@@ -6,7 +6,7 @@ export interface SpeechParams {
   pitchVariation?: number;  // ピッチ変化: ±3半音
   speedVariation?: [number, number]; // 再生速度: 0.85-1.15倍
   grainDuration?: [number, number];  // 各粒の長さ: 0.25-0.6秒
-  grainInterval?: [number, number];  // 粒間隔: 60-200ms
+  grainInterval?: [number, number];  // 粒間隔: 300-800ms
   useReverb?: boolean;      // 簡易リバーブ使用
 }
 
@@ -15,7 +15,7 @@ const DEFAULT_PARAMS: Required<SpeechParams> = {
   pitchVariation: 3,
   speedVariation: [0.85, 1.15],
   grainDuration: [0.25, 0.6],
-  grainInterval: [0.06, 0.2],
+  grainInterval: [0.3, 0.8], // 間隔を大幅に延長（0.06-0.2 → 0.3-0.8秒）
   useReverb: true,
 };
 
@@ -62,7 +62,7 @@ export async function speakLikePanda(
   context: AudioContext,
   audioUrl: string,
   params: SpeechParams = {}
-): Promise<void> {
+): Promise<number> {
   const config = { ...DEFAULT_PARAMS, ...params };
 
   try {
@@ -70,8 +70,8 @@ export async function speakLikePanda(
     const audioBuffer = await loadAudioBuffer(context, audioUrl);
     const bufferDuration = audioBuffer.duration;
 
-    // 粒数をランダム決定
-    const grainCount = Math.floor(randomInRange(2, config.grainCount + 1));
+    // 粒数をランダム決定（設定値をより確実に使用）
+    const grainCount = Math.max(config.grainCount, Math.floor(randomInRange(config.grainCount * 0.8, config.grainCount + 1)));
 
     // 簡易リバーブの準備
     let convolver: ConvolverNode | null = null;
@@ -81,12 +81,34 @@ export async function speakLikePanda(
       convolver.connect(context.destination);
     }
 
-    // 各粒を生成・再生
+    // 各粒の開始時刻を事前に計算
+    const grainStartTimes: number[] = [];
+    let currentTime = 0;
+
     for (let i = 0; i < grainCount; i++) {
-      setTimeout(() => {
-        createAndPlayGrain(context, audioBuffer, bufferDuration, config, convolver);
-      }, i * randomInRange(config.grainInterval[0], config.grainInterval[1]) * 1000);
+      grainStartTimes.push(currentTime);
+      // 次の粒まての間隔をランダムに決定
+      const interval = randomInRange(config.grainInterval[0], config.grainInterval[1]);
+      currentTime += interval;
     }
+
+    // 各粒の長さもランダムに決定
+    const grainDurations = grainStartTimes.map(() =>
+      randomInRange(config.grainDuration[0], config.grainDuration[1])
+    );
+
+    // 実際の音声終了時間を計算（最後の粒の開始時刻 + その粒の長さ）
+    const actualDuration = grainStartTimes[grainCount - 1] + grainDurations[grainCount - 1];
+
+    // 各粒を生成・再生
+    grainStartTimes.forEach((startTime, i) => {
+      setTimeout(() => {
+        createAndPlayGrain(context, audioBuffer, bufferDuration, config, convolver, grainDurations[i]);
+      }, startTime * 1000);
+    });
+
+    // 実際の音声長を返す
+    return actualDuration;
 
   } catch (error) {
     console.error('Panda speech synthesis failed:', error);
@@ -100,15 +122,21 @@ function createAndPlayGrain(
   audioBuffer: AudioBuffer,
   bufferDuration: number,
   config: Required<SpeechParams>,
-  convolver: ConvolverNode | null
+  convolver: ConvolverNode | null,
+  grainLength: number // 事前に計算された粒の長さ
 ): void {
   try {
+    // AudioContextがsuspendedの場合は再開
+    if (context.state === 'suspended') {
+      context.resume();
+    }
+
     // BufferSourceを作成
     const source = context.createBufferSource();
     source.buffer = audioBuffer;
 
     // ランダムなオフセット位置を決定
-    const maxOffset = Math.max(0, bufferDuration - config.grainDuration[1]);
+    const maxOffset = Math.max(0, bufferDuration - grainLength);
     const startTime = randomInRange(0, maxOffset);
 
     // ランダムなピッチ変化を適用
@@ -116,13 +144,10 @@ function createAndPlayGrain(
     const basePlaybackRate = randomInRange(config.speedVariation[0], config.speedVariation[1]);
     source.playbackRate.value = basePlaybackRate * semitoneToRate(pitchSemitones);
 
-    // 粒の長さを決定
-    const grainLength = randomInRange(config.grainDuration[0], config.grainDuration[1]);
-
     // フェード用のGainNodeを作成
     const gainNode = context.createGain();
     const currentTime = context.currentTime;
-    const fadeTime = 0.01; // 10ms のフェード
+    const fadeTime = Math.min(0.02, grainLength * 0.1); // フェード時間を粒の長さに応じて調整
 
     // フェードイン・アウト設定
     gainNode.gain.setValueAtTime(0, currentTime);
@@ -147,6 +172,11 @@ function createAndPlayGrain(
     } else {
       gainNode.connect(context.destination);
     }
+
+    // エラーハンドリング
+    source.addEventListener('ended', () => {
+      // 音声終了時のクリーンアップ（必要に応じて）
+    });
 
     // 再生開始・停止
     source.start(currentTime, startTime);
@@ -179,7 +209,7 @@ export async function initializeAudioContext(): Promise<AudioContext> {
 // 意図分類とランダムパラメータを組み合わせた発話
 export function createVariedSpeechParams(intent: 'greeting' | 'hungry' | 'playful' | 'random'): SpeechParams {
   const baseParams: SpeechParams = {
-    grainCount: Math.floor(randomInRange(2, 6)),
+    grainCount: Math.floor(randomInRange(3, 8)), // 粒数を増加（2-6 → 3-8）
     useReverb: Math.random() > 0.3, // 70%の確率でリバーブ使用
   };
 
@@ -189,7 +219,8 @@ export function createVariedSpeechParams(intent: 'greeting' | 'hungry' | 'playfu
         ...baseParams,
         pitchVariation: randomInRange(1, 2), // 穏やかなピッチ変化
         speedVariation: [0.9, 1.1], // 落ち着いた速度
-        grainDuration: [0.3, 0.5], // やや長めの粒
+        grainDuration: [0.5, 0.8], // より長めの粒（0.3-0.5 → 0.5-0.8）
+        grainInterval: [0.4, 0.7], // 適度な間隔でゆったりと
       };
 
     case 'hungry':
@@ -197,7 +228,8 @@ export function createVariedSpeechParams(intent: 'greeting' | 'hungry' | 'playfu
         ...baseParams,
         pitchVariation: randomInRange(0.5, 1.5), // 低めのピッチ
         speedVariation: [0.85, 1.0], // やや遅めの速度
-        grainDuration: [0.4, 0.6], // 長めの粒で切ない感じ
+        grainDuration: [0.6, 0.9], // さらに長めの粒で切ない感じ（0.4-0.6 → 0.6-0.9）
+        grainInterval: [0.5, 0.9], // より長い間隔でゆっくりと
       };
 
     case 'playful':
@@ -205,8 +237,8 @@ export function createVariedSpeechParams(intent: 'greeting' | 'hungry' | 'playfu
         ...baseParams,
         pitchVariation: randomInRange(2, 3), // 大きなピッチ変化
         speedVariation: [1.0, 1.15], // 速めの速度
-        grainDuration: [0.25, 0.4], // 短めの粒で活発な感じ
-        grainInterval: [0.05, 0.15], // 短い間隔
+        grainDuration: [0.4, 0.6], // 少し長めの粒で活発な感じ（0.25-0.4 → 0.4-0.6）
+        grainInterval: [0.2, 0.5], // 活発だが適度な間隔
       };
 
     default: // random
@@ -214,7 +246,8 @@ export function createVariedSpeechParams(intent: 'greeting' | 'hungry' | 'playfu
         ...baseParams,
         pitchVariation: randomInRange(1, 3),
         speedVariation: [randomInRange(0.85, 0.95), randomInRange(1.05, 1.15)],
-        grainDuration: [randomInRange(0.25, 0.35), randomInRange(0.45, 0.6)],
+        grainDuration: [randomInRange(0.4, 0.5), randomInRange(0.6, 0.9)], // 全体的に長めに（0.25-0.35, 0.45-0.6 → 0.4-0.5, 0.6-0.9）
+        grainInterval: [0.3, 0.8], // デフォルトの間隔
       };
   }
 }
