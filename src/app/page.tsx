@@ -8,8 +8,19 @@ import {
   initializeAudioContext,
   createVariedSpeechParams
 } from '@/lib/pandaSpeech'
+import {
+  loadPandaMemory,
+  savePandaMemory,
+  recordConversation,
+  getIntimacyAdjustedParams,
+  getIntimacyMessage,
+  getIntimacyLevelName,
+  type PandaMemory
+} from '@/lib/pandaLearning'
 import Bubble from '@/components/Bubble'
 import QuickChips from '@/components/QuickChips'
+import IntimacyGauge from '@/components/IntimacyGauge'
+import MilestoneNotification from '@/components/MilestoneNotification'
 
 export default function Home() {
   const [userInput, setUserInput] = useState('')
@@ -19,10 +30,17 @@ export default function Home() {
   const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(false)
   const [audioInitialized, setAudioInitialized] = useState(false)
 
+  // 学習システム関連
+  const [pandaMemory, setPandaMemory] = useState<PandaMemory>(() => loadPandaMemory())
+  const [intimacyAnimating, setIntimacyAnimating] = useState(false)
+  const [sessionStartTime, setSessionStartTime] = useState<Date>(new Date())
+  const [newUnlocks, setNewUnlocks] = useState<string[]>([])
+  const [showMilestone, setShowMilestone] = useState(false)
+
   const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
 
-  // 音声発話処理
+  // 音声発話処理（学習システム統合版）
   const performSpeech = useCallback(async (input: string, isUserInput: boolean = true) => {
     if (isSpeaking) return
 
@@ -43,16 +61,23 @@ export default function Home() {
         setAudioInitialized(true)
       }
 
-      // 意図に応じたパラメータを生成
+      // 意図に応じたベースパラメータを生成
       let intent: 'greeting' | 'hungry' | 'playful' | 'random' = 'random'
       if (reply.id === 1) intent = 'hungry'
       else if (reply.id === 2) intent = 'playful'
       else if (reply.id === 3) intent = 'greeting'
 
-      const speechParams = createVariedSpeechParams(intent)
+      const baseSpeechParams = createVariedSpeechParams(intent)
 
-      // 粒合成による音声再生
-      await speakLikePanda(audioContextRef.current, reply.src, speechParams)
+      // 🧠 親密度に基づいてパラメータを調整
+      const intimacyAdjustedParams = getIntimacyAdjustedParams(
+        baseSpeechParams,
+        pandaMemory.intimacyLevel,
+        pandaMemory.preferredResponseStyle
+      )
+
+      // 粒合成による音声再生（学習調整版）
+      await speakLikePanda(audioContextRef.current, reply.src, intimacyAdjustedParams)
 
       // 翻訳表示
       setCurrentReply(reply)
@@ -60,8 +85,44 @@ export default function Home() {
         setUserInput('')
       }
 
+      // 🧠 会話を記録して学習データを更新
+      if (isUserInput) {
+        const sessionDuration = Math.floor((Date.now() - sessionStartTime.getTime()) / 1000)
+        const previousIntimacy = pandaMemory.intimacyLevel
+        const previousUnlocks = [...pandaMemory.specialUnlocks]
+
+        const updatedMemory = recordConversation(
+          pandaMemory,
+          input,
+          { id: reply.id, translation: reply.translation },
+          Math.max(sessionDuration, 5) // 最低5秒のセッション時間
+        )
+
+        setPandaMemory(updatedMemory)
+        savePandaMemory(updatedMemory)
+
+        // 親密度が上がったらアニメーション
+        if (updatedMemory.intimacyLevel > previousIntimacy) {
+          setIntimacyAnimating(true)
+          setTimeout(() => setIntimacyAnimating(false), 2000)
+        }
+
+        // 新しい解放があった場合の通知
+        const newUnlocksList = updatedMemory.specialUnlocks.filter(
+          unlock => !previousUnlocks.includes(unlock)
+        )
+
+        if (newUnlocksList.length > 0) {
+          setNewUnlocks(newUnlocksList)
+          setShowMilestone(true)
+        }
+
+        // セッション開始時刻をリセット
+        setSessionStartTime(new Date())
+      }
+
       // 音声の長さを推定して発話終了を管理
-      const estimatedDuration = (speechParams.grainCount || 3) * 0.5 + 1
+      const estimatedDuration = (intimacyAdjustedParams.grainCount || 3) * 0.5 + 1
       setTimeout(() => {
         setIsSpeaking(false)
       }, estimatedDuration * 1000)
@@ -70,7 +131,7 @@ export default function Home() {
       console.error('Speech synthesis failed:', error)
       setIsSpeaking(false)
     }
-  }, [isSpeaking])
+  }, [isSpeaking, pandaMemory, sessionStartTime])
 
   // 自動発話処理
   const handleAutoSpeak = useCallback(async () => {
@@ -183,6 +244,15 @@ export default function Home() {
             disabled={isDisabled}
           />
 
+          {/* 🧠 親密度ゲージ */}
+          <IntimacyGauge
+            intimacyLevel={pandaMemory.intimacyLevel}
+            totalConversations={pandaMemory.totalConversations}
+            relationshipName={getIntimacyLevelName(pandaMemory.intimacyLevel)}
+            message={getIntimacyMessage(pandaMemory.intimacyLevel)}
+            isAnimating={intimacyAnimating}
+          />
+
           {/* 自動発話トグル */}
           <div className="bg-white rounded-lg p-4 border border-orange-200 shadow-sm">
             <label className="flex items-center space-x-3 cursor-pointer">
@@ -198,7 +268,7 @@ export default function Home() {
                   🧪 実験：パンダが&quot;自由にしゃべる&quot;
                 </span>
                 <p id="auto-speak-description" className="text-xs text-gray-500 mt-1">
-                  10〜20秒ごとに自動で鳴きます（初回操作後に有効）
+                  10〜20秒ごとに自動で鳴きます（親密度:{pandaMemory.intimacyLevel}%）
                 </p>
               </div>
             </label>
@@ -209,6 +279,22 @@ export default function Home() {
             translation={currentReply?.translation || ''}
             isVisible={!!currentReply}
           />
+
+          {/* 学習状況表示（デバッグ用） */}
+          {pandaMemory.totalConversations > 0 && (
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div className="text-xs text-gray-600 space-y-1">
+                <div>🧠 学習状況: {pandaMemory.preferredResponseStyle}スタイル</div>
+                <div>📈 総会話: {pandaMemory.totalConversations}回</div>
+                {pandaMemory.favoriteQuestions.length > 0 && (
+                  <div>❤️ よく聞く質問: {pandaMemory.favoriteQuestions[0].question}</div>
+                )}
+                {pandaMemory.specialUnlocks.length > 0 && (
+                  <div>🏆 解放済み: {pandaMemory.specialUnlocks.join(', ')}</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -221,6 +307,17 @@ export default function Home() {
           園内限定の&quot;特別ボイス&quot;も準備中！西山動物園で会いに来てね🐾
         </p>
       </footer>
+
+      {/* マイルストーン通知 */}
+      {showMilestone && (
+        <MilestoneNotification
+          newUnlocks={newUnlocks}
+          onClose={() => {
+            setShowMilestone(false)
+            setNewUnlocks([])
+          }}
+        />
+      )}
     </div>
   )
 }
