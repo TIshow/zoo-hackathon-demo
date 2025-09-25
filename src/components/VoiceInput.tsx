@@ -186,7 +186,7 @@ export default function VoiceInput({ onVoiceInput, disabled = false, isProcessin
                 key={i}
                 className={`w-1 transition-all duration-100 ${getLevelColor(voiceLevel)}`}
                 style={{
-                  height: `${Math.max(4, (voiceLevel / 100) * 20 + Math.random() * 8)}px`,
+                  height: `${Math.max(4, (voiceLevel / 100) * 20 + (voiceLevel > 10 ? 4 : 0))}px`,
                   opacity: getLevelIntensity(voiceLevel)
                 }}
               />

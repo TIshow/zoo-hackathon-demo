@@ -32,16 +32,51 @@ export default function Home() {
   const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(false)
   const [audioInitialized, setAudioInitialized] = useState(false)
 
-  // 学習システム関連
-  const [pandaMemory, setPandaMemory] = useState<PandaMemory>(() => loadPandaMemory())
+  // 学習システム関連（SSR対応のため初期値を使用）
+  const [pandaMemory, setPandaMemory] = useState<PandaMemory>(() => {
+    // SSR時は常に初期値を返す
+    if (typeof window === 'undefined') {
+      return {
+        totalConversations: 0,
+        uniqueDays: 0,
+        firstMeeting: null,
+        lastSeen: null,
+        favoriteQuestions: [],
+        conversationHistory: [],
+        totalSessionTime: 0,
+        intimacyLevel: 0,
+        longestSession: 0,
+        consecutiveDays: 0,
+        preferredResponseStyle: 'mixed' as const,
+        specialUnlocks: []
+      }
+    }
+    return loadPandaMemory()
+  })
   const [intimacyAnimating, setIntimacyAnimating] = useState(false)
-  const [sessionStartTime, setSessionStartTime] = useState<Date>(new Date())
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null)
   const [newUnlocks, setNewUnlocks] = useState<string[]>([])
   const [showMilestone, setShowMilestone] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
+  const [isClientMounted, setIsClientMounted] = useState(false)
 
   const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+
+  // クライアントサイドでの初期化
+  useEffect(() => {
+    // クライアントマウント検知
+    setIsClientMounted(true)
+
+    // セッション開始時刻の初期化
+    if (!sessionStartTime) {
+      setSessionStartTime(new Date())
+    }
+
+    // localStorageからpandaMemoryを読み込み（初回のみ）
+    const actualMemory = loadPandaMemory()
+    setPandaMemory(actualMemory)
+  }, [sessionStartTime]) // sessionStartTimeを依存配列に追加
 
   // 音声発話処理（学習システム統合版）
   const performSpeech = useCallback(async (input: string, isUserInput: boolean = true) => {
@@ -90,7 +125,9 @@ export default function Home() {
 
       // 🧠 会話を記録して学習データを更新
       if (isUserInput) {
-        const sessionDuration = Math.floor((Date.now() - sessionStartTime.getTime()) / 1000)
+        // sessionStartTime が null の場合は現在の時刻で初期化
+        const startTime = sessionStartTime || new Date()
+        const sessionDuration = Math.floor((Date.now() - startTime.getTime()) / 1000)
         const previousIntimacy = pandaMemory.intimacyLevel
         const previousUnlocks = [...pandaMemory.specialUnlocks]
 
@@ -303,7 +340,7 @@ export default function Home() {
                 <span className="text-sm font-medium text-gray-700">
                   🧪 実験：パンダが&quot;自由にしゃべる&quot;
                 </span>
-                <p id="auto-speak-description" className="text-xs text-gray-500 mt-1">
+                <p id="auto-speak-description" className="text-xs text-gray-500 mt-1" suppressHydrationWarning>
                   10〜20秒ごとに自動で鳴きます（親密度:{pandaMemory.intimacyLevel}%）
                 </p>
               </div>
@@ -316,8 +353,8 @@ export default function Home() {
             isVisible={!!currentReply}
           />
 
-          {/* 学習状況表示（デバッグ用） */}
-          {pandaMemory.totalConversations > 0 && (
+          {/* 学習状況表示（デバッグ用） - CSR専用 */}
+          {isClientMounted && pandaMemory.totalConversations > 0 && (
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
               <div className="text-xs text-gray-600 space-y-1">
                 <div>🧠 学習状況: {pandaMemory.preferredResponseStyle}スタイル</div>
