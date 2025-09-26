@@ -38,6 +38,8 @@ const SpectrumPanel = dynamic(() => import('@/components/SpectrumPanel'), { ssr:
 const TranslationCaption = dynamic(() => import('@/components/TranslationCaption'), { ssr: false })
 
 export default function Home() {
+  console.log('🏗️ Home component rendering...')
+
   const [userInput, setUserInput] = useState('')
   const [currentReply, setCurrentReply] = useState<PandaReply | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -92,6 +94,8 @@ export default function Home() {
 
   // クライアントサイドでの初期化
   useEffect(() => {
+    console.log('🏠 Component mounting/updating...')
+
     // クライアントマウント検知
     setIsClientMounted(true)
 
@@ -103,11 +107,24 @@ export default function Home() {
     // localStorageからpandaMemoryを読み込み（初回のみ）
     const actualMemory = loadPandaMemory()
     setPandaMemory(actualMemory)
+
+    console.log('📊 Component state:', {
+      isAnalysisEnabled,
+      hasAnalyserBridge: !!analyserBridge,
+      isClientMounted
+    })
   }, [sessionStartTime]) // sessionStartTimeを依存配列に追加
 
   // 音声発話処理（学習システム統合版）
   const performSpeech = useCallback(async (input: string, isUserInput: boolean = true) => {
-    if (isSpeaking) return
+    console.log('🎤 performSpeech called:', { input, isUserInput, isSpeaking })
+
+    if (isSpeaking) {
+      console.log('⏸️ Already speaking, returning early')
+      return
+    }
+
+    console.log('🔄 Starting speech performance...')
 
     try {
       // 考え中状態を表示（250ms）
@@ -124,15 +141,19 @@ export default function Home() {
       if (!audioContextRef.current) {
         audioContextRef.current = await initializeAudioContext()
         setAudioInitialized(true)
+      }
 
-        // AnalyserBridgeの作成
-        if (isAnalysisEnabled && audioContextRef.current) {
-          try {
-            const analyser = createAnalyser(audioContextRef.current)
-            setAnalyserBridge(analyser)
-          } catch (error) {
-            console.warn('Failed to create analyser:', error)
-          }
+      // AnalyserBridgeの作成（毎回チェック）
+      let currentAnalyserBridge = analyserBridge
+      if (isAnalysisEnabled && audioContextRef.current && !currentAnalyserBridge) {
+        try {
+          console.log('🔬 Creating analyser bridge...')
+          const analyser = createAnalyser(audioContextRef.current)
+          setAnalyserBridge(analyser)
+          currentAnalyserBridge = analyser // 今回の処理で使用
+          console.log('✅ Analyser bridge created successfully')
+        } catch (error) {
+          console.error('❌ Failed to create analyser:', error)
         }
       }
 
@@ -153,16 +174,18 @@ export default function Home() {
 
       // 解析機能付き音声再生
       let speechResult: SpeechAnalysisResult
-      if (isAnalysisEnabled && analyserBridge) {
+      if (isAnalysisEnabled && currentAnalyserBridge) {
+        console.log('🎵 Starting analysis-enabled speech synthesis')
+
         // 特徴量サンプリング開始
         setIsAnalyzing(true)
         featureAggregatorRef.current.clear()
 
         // 定期的に特徴量を抽出
         analysisIntervalRef.current = setInterval(() => {
-          if (analyserBridge) {
-            const frequencyData = analyserBridge.getFrequencyFrame()
-            const timeData = analyserBridge.getTimeFrame()
+          if (currentAnalyserBridge) {
+            const frequencyData = currentAnalyserBridge.getFrequencyFrame()
+            const timeData = currentAnalyserBridge.getTimeFrame()
             const features = extractFeatures(frequencyData, timeData)
             featureAggregatorRef.current.addSample(features)
           }
@@ -172,9 +195,15 @@ export default function Home() {
           audioContextRef.current,
           reply.src,
           intimacyAdjustedParams,
-          analyserBridge
+          currentAnalyserBridge
         )
       } else {
+        console.log('⚠️ Using traditional speech synthesis:', {
+          isAnalysisEnabled,
+          hasAnalyserBridge: !!analyserBridge,
+          hasCurrentAnalyserBridge: !!currentAnalyserBridge
+        })
+
         // 従来の方式
         const duration = await speakLikePanda(audioContextRef.current, reply.src, intimacyAdjustedParams)
         speechResult = {
@@ -235,15 +264,23 @@ export default function Home() {
 
         // 特徴量集計と分類
         const aggregate = featureAggregatorRef.current.getAggregate()
+        console.log('📊 Feature aggregate:', aggregate)
+
         if (aggregate.sampleCount > 0) {
           const intentResult = intentClassifierRef.current.classify(aggregate)
           const pandaSound = intentClassifierRef.current.getRandomPandaSound(intentResult.intent)
           const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
 
+          console.log('🎯 Classification result:', { intent: intentResult.intent, confidence: intentResult.confidence })
+          console.log('🐼 Panda sound:', pandaSound)
+          console.log('🗣️ Translation:', translation)
+
           setCurrentIntentResult(intentResult)
           setCurrentPandaSound(pandaSound)
           setCurrentTranslation(translation)
           setCurrentGrainTimeline(speechResult.grainTimeline)
+        } else {
+          console.warn('⚠️ No samples collected for analysis')
         }
 
         // 一定時間後に解析状態を終了
@@ -267,9 +304,14 @@ export default function Home() {
 
   // 自動発話処理
   const handleAutoSpeak = useCallback(async () => {
-    if (isSpeaking) return
+    console.log('🤖 Auto speak triggered')
+    if (isSpeaking) {
+      console.log('❌ Auto speak blocked, already speaking')
+      return
+    }
 
     const randomInput = ['おまかせで鳴く', 'こんにちは', 'あそぼ'][Math.floor(Math.random() * 3)]
+    console.log('✅ Calling performSpeech from AutoSpeak:', randomInput)
     await performSpeech(randomInput, false)
   }, [isSpeaking, performSpeech])
 
@@ -311,16 +353,24 @@ export default function Home() {
     }
   }, [autoSpeakEnabled, audioInitialized, isSpeaking, handleAutoSpeak])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {    
     e.preventDefault()
+    console.log('🚀 Form submitted:', { userInput: userInput.trim(), isSpeaking })
     if (userInput.trim() && !isSpeaking) {
+      console.log('✅ Calling performSpeech with:', userInput.trim())
       await performSpeech(userInput.trim())
+    } else {
+      console.log('❌ Submit blocked:', { hasInput: !!userInput.trim(), isSpeaking })
     }
   }
 
   const handleQuickQuestion = async (question: string) => {
+    console.log('🎯 Quick question clicked:', question)
     if (!isSpeaking) {
+      console.log('✅ Calling performSpeech from QuickChips')
       await performSpeech(question)
+    } else {
+      console.log('❌ Quick question blocked, already speaking')
     }
   }
 
@@ -351,8 +401,12 @@ export default function Home() {
   }
 
   const handleVoiceInput = async (voiceText: string) => {
+    console.log('🎤 Voice input received:', voiceText)
     if (!isSpeaking && !isThinking) {
+      console.log('✅ Calling performSpeech from VoiceInput')
       await performSpeech(voiceText)
+    } else {
+      console.log('❌ Voice input blocked:', { isSpeaking, isThinking })
     }
   }
 
