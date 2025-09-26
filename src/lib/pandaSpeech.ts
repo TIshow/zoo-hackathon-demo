@@ -1,6 +1,8 @@
 // Web Audio API による粒合成風パンダ発話システム
 // 毎回少し違う鳴き方を生成して「生成っぽさ」を演出
 
+import type { AnalyserBridge, GrainTimeline } from '@/types/audio'
+
 export interface SpeechParams {
   grainCount?: number;      // 粒数: 2-5
   pitchVariation?: number;  // ピッチ変化: ±3半音
@@ -8,6 +10,11 @@ export interface SpeechParams {
   grainDuration?: [number, number];  // 各粒の長さ: 0.25-0.6秒
   grainInterval?: [number, number];  // 粒間隔: 300-800ms
   useReverb?: boolean;      // 簡易リバーブ使用
+}
+
+export interface SpeechAnalysisResult {
+  actualDuration: number
+  grainTimeline: GrainTimeline[]
 }
 
 const DEFAULT_PARAMS: Required<SpeechParams> = {
@@ -57,12 +64,13 @@ export async function loadAudioBuffer(context: AudioContext, url: string): Promi
   }
 }
 
-// 粒合成風発話のメイン関数
-export async function speakLikePanda(
+// 粒合成風発話のメイン関数（解析機能付き）
+export async function speakLikePandaWithAnalysis(
   context: AudioContext,
   audioUrl: string,
-  params: SpeechParams = {}
-): Promise<number> {
+  params: SpeechParams = {},
+  analyserBridge?: AnalyserBridge
+): Promise<SpeechAnalysisResult> {
   const config = { ...DEFAULT_PARAMS, ...params };
 
   try {
@@ -100,15 +108,33 @@ export async function speakLikePanda(
     // 実際の音声終了時間を計算（最後の粒の開始時刻 + その粒の長さ）
     const actualDuration = grainStartTimes[grainCount - 1] + grainDurations[grainCount - 1];
 
+    // GrainTimelineを構築
+    const grainTimeline: GrainTimeline[] = grainStartTimes.map((startTime, i) => ({
+      grainIndex: i,
+      startTime: startTime * 1000, // Convert to milliseconds
+      duration: grainDurations[i] * 1000 // Convert to milliseconds
+    }));
+
     // 各粒を生成・再生
     grainStartTimes.forEach((startTime, i) => {
       setTimeout(() => {
-        createAndPlayGrain(context, audioBuffer, bufferDuration, config, convolver, grainDurations[i]);
+        createAndPlayGrainWithAnalysis(
+          context,
+          audioBuffer,
+          bufferDuration,
+          config,
+          convolver,
+          grainDurations[i],
+          analyserBridge
+        );
       }, startTime * 1000);
     });
 
-    // 実際の音声長を返す
-    return actualDuration;
+    // 結果を返す
+    return {
+      actualDuration,
+      grainTimeline
+    };
 
   } catch (error) {
     console.error('Panda speech synthesis failed:', error);
@@ -116,14 +142,15 @@ export async function speakLikePanda(
   }
 }
 
-// 個別の粒を作成・再生
-function createAndPlayGrain(
+// 個別の粒を作成・再生（解析機能付き）
+function createAndPlayGrainWithAnalysis(
   context: AudioContext,
   audioBuffer: AudioBuffer,
   bufferDuration: number,
   config: Required<SpeechParams>,
   convolver: ConvolverNode | null,
-  grainLength: number // 事前に計算された粒の長さ
+  grainLength: number, // 事前に計算された粒の長さ
+  analyserBridge?: AnalyserBridge
 ): void {
   try {
     // AudioContextがsuspendedの場合は再開
@@ -155,22 +182,43 @@ function createAndPlayGrain(
     gainNode.gain.setValueAtTime(0.7, currentTime + grainLength - fadeTime);
     gainNode.gain.linearRampToValueAtTime(0, currentTime + grainLength);
 
-    // オーディオグラフを接続
+    // オーディオグラフを接続（解析機能付き）
     source.connect(gainNode);
 
-    if (convolver) {
-      // リバーブありの場合: ドライ70% + ウェット30%
-      const dryGain = context.createGain();
-      const wetGain = context.createGain();
-      dryGain.gain.value = 0.7;
-      wetGain.gain.value = 0.3;
+    if (analyserBridge) {
+      // AnalyserNodeを挿入
+      gainNode.connect(analyserBridge.analyser);
 
-      gainNode.connect(dryGain);
-      gainNode.connect(wetGain);
-      dryGain.connect(context.destination);
-      wetGain.connect(convolver);
+      if (convolver) {
+        // リバーブありの場合: ドライ70% + ウェット30%
+        const dryGain = context.createGain();
+        const wetGain = context.createGain();
+        dryGain.gain.value = 0.7;
+        wetGain.gain.value = 0.3;
+
+        analyserBridge.analyser.connect(dryGain);
+        analyserBridge.analyser.connect(wetGain);
+        dryGain.connect(context.destination);
+        wetGain.connect(convolver);
+      } else {
+        analyserBridge.analyser.connect(context.destination);
+      }
     } else {
-      gainNode.connect(context.destination);
+      // 解析なしの場合は従来通り
+      if (convolver) {
+        // リバーブありの場合: ドライ70% + ウェット30%
+        const dryGain = context.createGain();
+        const wetGain = context.createGain();
+        dryGain.gain.value = 0.7;
+        wetGain.gain.value = 0.3;
+
+        gainNode.connect(dryGain);
+        gainNode.connect(wetGain);
+        dryGain.connect(context.destination);
+        wetGain.connect(convolver);
+      } else {
+        gainNode.connect(context.destination);
+      }
     }
 
     // エラーハンドリング
@@ -185,6 +233,16 @@ function createAndPlayGrain(
   } catch (error) {
     console.error('Grain creation failed:', error);
   }
+}
+
+// 既存の関数（後方互換性のため）
+export async function speakLikePanda(
+  context: AudioContext,
+  audioUrl: string,
+  params: SpeechParams = {}
+): Promise<number> {
+  const result = await speakLikePandaWithAnalysis(context, audioUrl, params);
+  return result.actualDuration;
 }
 
 // AudioContextの初期化とユーザー操作による解放

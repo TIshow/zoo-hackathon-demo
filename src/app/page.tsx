@@ -4,9 +4,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { selectPandaReply, type PandaReply } from '@/data/replies'
 import {
+  speakLikePandaWithAnalysis,
   speakLikePanda,
   initializeAudioContext,
-  createVariedSpeechParams
+  createVariedSpeechParams,
+  type SpeechAnalysisResult
 } from '@/lib/pandaSpeech'
 import {
   loadPandaMemory,
@@ -23,6 +25,17 @@ import IntimacyGauge from '@/components/IntimacyGauge'
 import MilestoneNotification from '@/components/MilestoneNotification'
 import ShareCardGenerator from '@/components/ShareCardGenerator'
 import VoiceInput from '@/components/VoiceInput'
+
+// 新機能のimport
+import dynamic from 'next/dynamic'
+import { createAnalyser } from '@/lib/audio/analyserBridge'
+import { FeatureAggregator, extractFeatures } from '@/lib/audio/featureExtractor'
+import { IntentClassifier } from '@/lib/audio/intentClassifier'
+import type { AnalyserBridge, IntentResult, GrainTimeline } from '@/types/audio'
+
+// CSR専用コンポーネント
+const SpectrumPanel = dynamic(() => import('@/components/SpectrumPanel'), { ssr: false })
+const TranslationCaption = dynamic(() => import('@/components/TranslationCaption'), { ssr: false })
 
 export default function Home() {
   const [userInput, setUserInput] = useState('')
@@ -60,8 +73,22 @@ export default function Home() {
   const [showShareCard, setShowShareCard] = useState(false)
   const [isClientMounted, setIsClientMounted] = useState(false)
 
+  // 新機能のstate
+  const [analyserBridge, setAnalyserBridge] = useState<AnalyserBridge | null>(null)
+  const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
+  const [currentIntentResult, setCurrentIntentResult] = useState<IntentResult | null>(null)
+  const [currentPandaSound, setCurrentPandaSound] = useState('')
+  const [currentTranslation, setCurrentTranslation] = useState('')
+  const [currentGrainTimeline, setCurrentGrainTimeline] = useState<GrainTimeline[]>([])
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+
   const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+
+  // 新機能のref
+  const featureAggregatorRef = useRef<FeatureAggregator>(new FeatureAggregator())
+  const intentClassifierRef = useRef<IntentClassifier>(new IntentClassifier())
+  const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // クライアントサイドでの初期化
   useEffect(() => {
@@ -97,6 +124,16 @@ export default function Home() {
       if (!audioContextRef.current) {
         audioContextRef.current = await initializeAudioContext()
         setAudioInitialized(true)
+
+        // AnalyserBridgeの作成
+        if (isAnalysisEnabled && audioContextRef.current) {
+          try {
+            const analyser = createAnalyser(audioContextRef.current)
+            setAnalyserBridge(analyser)
+          } catch (error) {
+            console.warn('Failed to create analyser:', error)
+          }
+        }
       }
 
       // 意図に応じたベースパラメータを生成
@@ -114,8 +151,37 @@ export default function Home() {
         pandaMemory.preferredResponseStyle
       )
 
-      // 粒合成による音声再生（学習調整版）
-      const actualDuration = await speakLikePanda(audioContextRef.current, reply.src, intimacyAdjustedParams)
+      // 解析機能付き音声再生
+      let speechResult: SpeechAnalysisResult
+      if (isAnalysisEnabled && analyserBridge) {
+        // 特徴量サンプリング開始
+        setIsAnalyzing(true)
+        featureAggregatorRef.current.clear()
+
+        // 定期的に特徴量を抽出
+        analysisIntervalRef.current = setInterval(() => {
+          if (analyserBridge) {
+            const frequencyData = analyserBridge.getFrequencyFrame()
+            const timeData = analyserBridge.getTimeFrame()
+            const features = extractFeatures(frequencyData, timeData)
+            featureAggregatorRef.current.addSample(features)
+          }
+        }, 50) // 20Hz サンプリング
+
+        speechResult = await speakLikePandaWithAnalysis(
+          audioContextRef.current,
+          reply.src,
+          intimacyAdjustedParams,
+          analyserBridge
+        )
+      } else {
+        // 従来の方式
+        const duration = await speakLikePanda(audioContextRef.current, reply.src, intimacyAdjustedParams)
+        speechResult = {
+          actualDuration: duration,
+          grainTimeline: []
+        }
+      }
 
       // 翻訳表示
       setCurrentReply(reply)
@@ -161,8 +227,33 @@ export default function Home() {
         setSessionStartTime(new Date())
       }
 
+      // 解析結果の処理
+      if (isAnalysisEnabled && analysisIntervalRef.current) {
+        // サンプリング停止
+        clearInterval(analysisIntervalRef.current)
+        analysisIntervalRef.current = null
+
+        // 特徴量集計と分類
+        const aggregate = featureAggregatorRef.current.getAggregate()
+        if (aggregate.sampleCount > 0) {
+          const intentResult = intentClassifierRef.current.classify(aggregate)
+          const pandaSound = intentClassifierRef.current.getRandomPandaSound(intentResult.intent)
+          const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
+
+          setCurrentIntentResult(intentResult)
+          setCurrentPandaSound(pandaSound)
+          setCurrentTranslation(translation)
+          setCurrentGrainTimeline(speechResult.grainTimeline)
+        }
+
+        // 一定時間後に解析状態を終了
+        setTimeout(() => {
+          setIsAnalyzing(false)
+        }, speechResult.actualDuration * 1000 + 500)
+      }
+
       // 実際の音声時間に基づいて発話終了を管理（余裕を持たせて）
-      const finalDuration = actualDuration + 0.5 // 0.5秒の余裕を追加
+      const finalDuration = speechResult.actualDuration + 0.5 // 0.5秒の余裕を追加
 
       setTimeout(() => {
         setIsSpeaking(false)
@@ -235,6 +326,24 @@ export default function Home() {
 
   const toggleAutoSpeak = () => {
     setAutoSpeakEnabled(!autoSpeakEnabled)
+  }
+
+  const toggleAnalysis = () => {
+    setIsAnalysisEnabled(!isAnalysisEnabled)
+
+    // 解析無効化時は現在の状態をクリア
+    if (isAnalysisEnabled) {
+      setCurrentIntentResult(null)
+      setCurrentPandaSound('')
+      setCurrentTranslation('')
+      setCurrentGrainTimeline([])
+      setIsAnalyzing(false)
+
+      if (analysisIntervalRef.current) {
+        clearInterval(analysisIntervalRef.current)
+        analysisIntervalRef.current = null
+      }
+    }
   }
 
   const handleShareCard = () => {
@@ -315,6 +424,46 @@ export default function Home() {
             onQuickQuestion={handleQuickQuestion}
             disabled={isDisabled}
           />
+
+          {/* AI解析機能の切り替え */}
+          <div className="bg-white rounded-lg p-4 border border-orange-200 shadow-sm">
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isAnalysisEnabled}
+                onChange={toggleAnalysis}
+                className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-300"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-700">
+                  🔬 AI音声解析＆翻訳
+                </span>
+                <p className="text-xs text-gray-500 mt-1">
+                  パンダの鳴き声をリアルタイム解析して意図を推測します
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* スペクトラム解析パネル */}
+          {isAnalysisEnabled && (
+            <div className="space-y-4">
+              <SpectrumPanel
+                analyserBridge={analyserBridge}
+                isActive={isAnalyzing}
+                className="h-32"
+              />
+
+              <TranslationCaption
+                intentResult={currentIntentResult}
+                pandaSound={currentPandaSound}
+                translation={currentTranslation}
+                grainTimeline={currentGrainTimeline}
+                isActive={isAnalyzing}
+                className="min-h-[160px]"
+              />
+            </div>
+          )}
 
           {/* 🧠 親密度ゲージ */}
           <IntimacyGauge
