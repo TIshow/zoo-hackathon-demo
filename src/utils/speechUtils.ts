@@ -1,6 +1,6 @@
 // Speech synthesis utilities
 
-import { selectPandaReply } from '@/data/replies'
+import { selectPandaReply, type PandaReply } from '@/data/replies'
 import {
   speakLikePandaWithAnalysis,
   speakLikePanda,
@@ -13,7 +13,7 @@ import { DEBUG_CONFIG } from '@/config/analysisConfig'
 
 export interface SpeechProcessingResult {
   speechResult: SpeechAnalysisResult
-  reply: any
+  reply: PandaReply
   intent: 'greeting' | 'hungry' | 'playful' | 'random'
 }
 
