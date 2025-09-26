@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "🐼 レッサーパンダトーク",
+  title: "🐼 しゃべれっさー！",
   description: "レッサーパンダとの擬似会話を楽しめるWebデモアプリ",
 };
 
