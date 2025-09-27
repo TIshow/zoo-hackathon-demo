@@ -450,7 +450,7 @@ export default function Home() {
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="レッサーパンダに話しかけてね..."
+                placeholder="レッサーパンダに話しかけてね！"
                 className="w-full px-4 py-3 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent disabled:bg-gray-50"
                 disabled={isDisabled}
                 aria-label="レッサーパンダへのメッセージ入力"
