@@ -379,44 +379,50 @@ export default function Home() {
   const isDisabled = isSpeaking || isThinking
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-100 to-amber-200">
-      <main className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
+      <main className="flex flex-col items-center justify-center min-h-screen p-6">
+        <div className="w-full max-w-lg space-y-8">
           {/* ヘッダー */}
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-orange-900 mb-2">
-              🐼 しゃべれっさー！ 🐼
+          <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+            <div className="mb-3">
+              <span className="text-5xl">🐼</span>
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-500 bg-clip-text text-transparent mb-3">
+              しゃべれっさー！
             </h1>
-            <p className="text-sm text-gray-600 mb-1">
-              レッサーパンダと&quot;おしゃべり&quot;（模擬翻訳）
+            <p className="text-gray-600 mb-2 font-medium">
+              レッサーパンダとの&quot;おしゃべり&quot;体験
             </p>
-            <p className="text-xs text-orange-600 font-medium">
-              🔊 音量にご注意ください
-            </p>
+            <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-sm font-medium">
+              <span>🔊</span>
+              <span>音量にご注意ください</span>
+            </div>
           </div>
 
           {/* 入力フォーム */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <input
-                type="text"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="レッサーパンダに話しかけてね！"
-                className="w-full px-4 py-3 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent disabled:bg-gray-50"
-                disabled={isDisabled}
-                aria-label="レッサーパンダへのメッセージ入力"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={!userInput.trim() || isDisabled}
-              className="w-full bg-orange-500 text-white px-6 py-3 rounded-lg shadow-md hover:bg-orange-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed focus:ring-2 focus:ring-orange-300 focus:outline-none"
-              aria-label="メッセージを送信してレッサーパンダに話しかける"
-            >
-              {isThinking ? '考え中...' : isSpeaking ? '鳴いています...' : '話しかける'}
-            </button>
-          </form>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  placeholder="レッサーパンダに話しかけてね！"
+                  className="w-full px-5 py-4 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 disabled:bg-gray-50 transition-all duration-200 placeholder-gray-400"
+                  disabled={isDisabled}
+                  aria-label="レッサーパンダへのメッセージ入力"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!userInput.trim() || isDisabled}
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed focus:ring-2 focus:ring-orange-400 focus:outline-none font-medium"
+                aria-label="メッセージを送信してレッサーパンダに話しかける"
+              >
+                {isThinking ? '🤔 考え中...' : isSpeaking ? '🗣️ 鳴いています...' : '💬 話しかける'}
+              </button>
+            </form>
+          </div>
 
           {/* 音声入力 */}
           <VoiceInput
@@ -432,19 +438,35 @@ export default function Home() {
           />
 
           {/* AI解析機能の切り替え */}
-          <div className="bg-white rounded-lg p-4 border border-orange-200 shadow-sm">
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isAnalysisEnabled}
-                onChange={toggleAnalysis}
-                className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-300"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">
-                  🔬 AI音声解析＆翻訳
-                </span>
-                <p className="text-xs text-gray-500 mt-1">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20">
+            <label className="flex items-start space-x-4 cursor-pointer group">
+              <div className="relative mt-1">
+                <input
+                  type="checkbox"
+                  checked={isAnalysisEnabled}
+                  onChange={toggleAnalysis}
+                  className="sr-only"
+                />
+                <div className={`w-6 h-6 rounded-lg border-2 transition-all duration-200 ${
+                  isAnalysisEnabled
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 border-blue-500'
+                    : 'border-gray-300 group-hover:border-gray-400'
+                }`}>
+                  {isAnalysisEnabled && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl">🔬</span>
+                  <span className="font-semibold text-gray-800">
+                    AI音声解析＆翻訳
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
                   パンダの鳴き声をリアルタイム解析して意図を推測します
                 </p>
               </div>
@@ -453,21 +475,37 @@ export default function Home() {
 
           {/* スペクトラム解析パネル */}
           {isAnalysisEnabled && (
-            <div className="space-y-4">
-              <SpectrumPanel
-                analyserBridge={analyserBridge}
-                isActive={isAnalyzing}
-                className="h-32"
-              />
+            <div className="space-y-6">
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <span className="text-xl">📊</span>
+                    リアルタイム音声スペクトラム
+                  </h3>
+                </div>
+                <SpectrumPanel
+                  analyserBridge={analyserBridge}
+                  isActive={isAnalyzing}
+                  className="h-32 rounded-xl overflow-hidden"
+                />
+              </div>
 
-              <TranslationCaption
-                intentResult={currentIntentResult}
-                pandaSound={currentPandaSound}
-                translation={currentTranslation}
-                grainTimeline={currentGrainTimeline}
-                isActive={isAnalyzing}
-                className="min-h-[160px]"
-              />
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <span className="text-xl">🐼</span>
+                    AI翻訳結果
+                  </h3>
+                </div>
+                <TranslationCaption
+                  intentResult={currentIntentResult}
+                  pandaSound={currentPandaSound}
+                  translation={currentTranslation}
+                  grainTimeline={currentGrainTimeline}
+                  isActive={isAnalyzing}
+                  className="min-h-[120px]"
+                />
+              </div>
             </div>
           )}
 
@@ -487,17 +525,35 @@ export default function Home() {
             isVisible={!!currentReply}
           />
 
-          {/* 学習状況表示（デバッグ用） - CSR専用 */}
+          {/* 学習状況表示 - CSR専用 */}
           {isClientMounted && pandaMemory.totalConversations > 0 && (
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <div className="text-xs text-gray-600 space-y-1">
-                <div>🧠 学習状況: {pandaMemory.preferredResponseStyle}スタイル</div>
-                <div>📈 総会話: {pandaMemory.totalConversations}回</div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20">
+              <div className="mb-3">
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="text-xl">🧠</span>
+                  学習状況
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-center gap-2 text-gray-700">
+                  <span className="w-6 text-center">🎨</span>
+                  <span>スタイル: <span className="font-medium">{pandaMemory.preferredResponseStyle}</span></span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <span className="w-6 text-center">📈</span>
+                  <span>総会話: <span className="font-medium">{pandaMemory.totalConversations}回</span></span>
+                </div>
                 {pandaMemory.favoriteQuestions.length > 0 && (
-                  <div>❤️ よく聞く質問: {pandaMemory.favoriteQuestions[0].question}</div>
+                  <div className="flex items-start gap-2 text-gray-700">
+                    <span className="w-6 text-center mt-0.5">❤️</span>
+                    <span>よく聞く質問: <span className="font-medium">{pandaMemory.favoriteQuestions[0].question}</span></span>
+                  </div>
                 )}
                 {pandaMemory.specialUnlocks.length > 0 && (
-                  <div>🏆 解放済み: {pandaMemory.specialUnlocks.map(id => getMilestoneTitle(id)).join(', ')}</div>
+                  <div className="flex items-start gap-2 text-gray-700">
+                    <span className="w-6 text-center mt-0.5">🏆</span>
+                    <span>解放済み: <span className="font-medium">{pandaMemory.specialUnlocks.map(id => getMilestoneTitle(id)).join(', ')}</span></span>
+                  </div>
                 )}
               </div>
             </div>
@@ -506,13 +562,17 @@ export default function Home() {
       </main>
 
       {/* フッター */}
-      <footer className="bg-orange-50 border-t border-orange-200 p-4 text-center text-xs text-gray-600">
-        <p className="mb-1">
-          ※ この翻訳は擬似的な演出です。実際の鳴き声の意味を保証するものではありません。
-        </p>
-        <p>
-          園内限定の&quot;特別ボイス&quot;も準備中！西山動物園で会いに来てね🐾
-        </p>
+      <footer className="bg-white/60 backdrop-blur-sm border-t border-white/30 p-6 text-center">
+        <div className="max-w-2xl mx-auto space-y-3">
+          <div className="inline-flex items-center gap-2 bg-orange-100/80 text-orange-700 px-4 py-2 rounded-full text-sm">
+            <span>ℹ️</span>
+            <span>この翻訳は擬似的な演出です</span>
+          </div>
+          <p className="text-sm text-gray-600">
+            園内限定の&quot;特別ボイス&quot;も準備中！<br />
+            <span className="font-medium text-orange-600">西山動物園で会いに来てね🐾</span>
+          </p>
+        </div>
       </footer>
 
       {/* マイルストーン通知 */}
