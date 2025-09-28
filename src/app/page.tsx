@@ -38,14 +38,10 @@ const SpectrumPanel = dynamic(() => import('@/components/SpectrumPanel'), { ssr:
 const TranslationCaption = dynamic(() => import('@/components/TranslationCaption'), { ssr: false })
 
 export default function Home() {
-  console.log('🏗️ Home component rendering...')
-
   const [userInput, setUserInput] = useState('')
   const [currentReply, setCurrentReply] = useState<PandaReply | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
-  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(false)
-  const [audioInitialized, setAudioInitialized] = useState(false)
 
   // 学習システム関連（SSR対応のため初期値を使用）
   const [pandaMemory, setPandaMemory] = useState<PandaMemory>(() => {
@@ -140,7 +136,6 @@ export default function Home() {
       // AudioContextの初期化
       if (!audioContextRef.current) {
         audioContextRef.current = await initializeAudioContext()
-        setAudioInitialized(true)
       }
 
       // AnalyserBridgeの作成（毎回チェック）
@@ -302,19 +297,6 @@ export default function Home() {
     }
   }, [isSpeaking, pandaMemory, sessionStartTime])
 
-  // 自動発話処理
-  const handleAutoSpeak = useCallback(async () => {
-    console.log('🤖 Auto speak triggered')
-    if (isSpeaking) {
-      console.log('❌ Auto speak blocked, already speaking')
-      return
-    }
-
-    const randomInput = ['おまかせで鳴く', 'こんにちは', 'あそぼ'][Math.floor(Math.random() * 3)]
-    console.log('✅ Calling performSpeech from AutoSpeak:', randomInput)
-    await performSpeech(randomInput, false)
-  }, [isSpeaking, performSpeech])
-
   // クリーンアップ
   useEffect(() => {
     return () => {
@@ -326,32 +308,6 @@ export default function Home() {
       }
     }
   }, [])
-
-  // 自動発話制御
-  useEffect(() => {
-    if (autoSpeakEnabled && audioInitialized && !isSpeaking) {
-      const scheduleNext = () => {
-        const delay = Math.random() * 10000 + 10000 // 10-20秒
-        autoSpeakTimer.current = setTimeout(async () => {
-          if (autoSpeakEnabled && !isSpeaking) {
-            await handleAutoSpeak()
-          }
-          if (autoSpeakEnabled) scheduleNext()
-        }, delay)
-      }
-      scheduleNext()
-    } else if (autoSpeakTimer.current) {
-      clearTimeout(autoSpeakTimer.current)
-      autoSpeakTimer.current = null
-    }
-
-    return () => {
-      if (autoSpeakTimer.current) {
-        clearTimeout(autoSpeakTimer.current)
-        autoSpeakTimer.current = null
-      }
-    }
-  }, [autoSpeakEnabled, audioInitialized, isSpeaking, handleAutoSpeak])
 
   const handleSubmit = async (e: React.FormEvent) => {    
     e.preventDefault()
@@ -372,10 +328,6 @@ export default function Home() {
     } else {
       console.log('❌ Quick question blocked, already speaking')
     }
-  }
-
-  const toggleAutoSpeak = () => {
-    setAutoSpeakEnabled(!autoSpeakEnabled)
   }
 
   const toggleAnalysis = () => {
@@ -528,27 +480,6 @@ export default function Home() {
             isAnimating={intimacyAnimating}
             onShareCard={handleShareCard}
           />
-
-          {/* 自動発話トグル */}
-          <div className="bg-white rounded-lg p-4 border border-orange-200 shadow-sm">
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoSpeakEnabled}
-                onChange={toggleAutoSpeak}
-                className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-300"
-                aria-describedby="auto-speak-description"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">
-                  🧪 実験：パンダが&quot;自由にしゃべる&quot;
-                </span>
-                <p id="auto-speak-description" className="text-xs text-gray-500 mt-1" suppressHydrationWarning>
-                  10〜20秒ごとに自動で鳴きます（親密度:{pandaMemory.intimacyLevel}%）
-                </p>
-              </div>
-            </label>
-          </div>
 
           {/* 返答吹き出し */}
           <Bubble
