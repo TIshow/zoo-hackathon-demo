@@ -12,7 +12,7 @@ const QUICK_QUESTIONS = [
 
 export default function QuickChips({ onQuickQuestion, disabled = false }: QuickChipsProps) {
   return (
-    <div className="w-full max-w-sm">
+    <div className="w-full">
       <p className="text-sm text-gray-600 mb-3 text-center">よく使う質問</p>
       <div className="flex flex-wrap gap-2 justify-center">
         {QUICK_QUESTIONS.map((question, index) => (

@@ -442,10 +442,12 @@ export default function Home() {
           </div>
 
           {/* プリセット質問 */}
-          <QuickChips
-            onQuickQuestion={handleQuickQuestion}
-            disabled={isDisabled}
-          />
+          <div className="flex justify-center">
+            <QuickChips
+              onQuickQuestion={handleQuickQuestion}
+              disabled={isDisabled}
+            />
+          </div>
 
           {/* AI解析機能の切り替え */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20">
