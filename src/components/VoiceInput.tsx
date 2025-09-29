@@ -163,18 +163,41 @@ export default function VoiceInput({ onVoiceInput, disabled = false, isProcessin
   }
 
   return (
-    <div className="bg-white rounded-lg border border-orange-200 shadow-sm p-4">
-      {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <span className="text-lg">🎤</span>
+    <div className="space-y-3">
+      {/* 音声入力ボタンとレベル表示 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleListening}
+            disabled={disabled || isProcessing || (hasPermission === false)}
+            className={`relative w-12 h-12 rounded-full transition-all duration-200 ${
+              isListening
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md`}
+          >
+            <span className="text-xl">
+              {isProcessing ? '🤔' : isListening ? '🔴' : '🎤'}
+            </span>
+
+            {/* 波紋エフェクト */}
+            {isListening && (
+              <div className="absolute inset-0 rounded-full border-2 border-red-300 animate-ping" />
+            )}
+          </button>
+
           <div>
-            <h3 className="font-medium text-sm text-gray-700">
+            <div className="text-sm font-medium text-gray-700">
               音声で話しかける
-            </h3>
-            <p className="text-xs text-gray-500">
-              マイクボタンを押して話してください
-            </p>
+            </div>
+            <div className="text-xs text-gray-500">
+              {isProcessing
+                ? 'パンダが考えています...'
+                : isListening
+                ? '聞いています... (クリックで停止)'
+                : 'マイクボタンを押して話してください'
+              }
+            </div>
           </div>
         </div>
 
@@ -195,45 +218,17 @@ export default function VoiceInput({ onVoiceInput, disabled = false, isProcessin
         )}
       </div>
 
-      {/* メインボタン */}
-      <div className="text-center mb-3">
-        <button
-          onClick={toggleListening}
-          disabled={disabled || isProcessing || (hasPermission === false)}
-          className={`relative w-16 h-16 rounded-full transition-all duration-200 ${
-            isListening
-              ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-              : 'bg-blue-500 hover:bg-blue-600'
-          } text-white disabled:bg-gray-300 disabled:cursor-not-allowed shadow-lg`}
-        >
-          <span className="text-2xl">
-            {isProcessing ? '🤔' : isListening ? '🔴' : '🎤'}
-          </span>
-
-          {/* 波紋エフェクト */}
-          {isListening && (
-            <div className="absolute inset-0 rounded-full border-4 border-red-300 animate-ping" />
-          )}
-        </button>
-
-        <div className="mt-2 text-xs text-gray-600">
-          {isProcessing
-            ? 'パンダが考えています...'
-            : isListening
-            ? '聞いています... (クリックで停止)'
-            : 'クリックして話しかける'
-          }
-        </div>
-      </div>
-
       {/* 音声認識結果表示 */}
       {(currentTranscript || finalText) && (
-        <div className="bg-gray-50 rounded-lg p-3 mb-2">
-          <div className="text-xs text-gray-500 mb-1">認識された音声:</div>
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+            <span>🎤</span>
+            認識された音声:
+          </div>
 
           {/* 確定したテキスト */}
           {finalText && (
-            <div className="text-sm text-gray-800 font-medium mb-1">
+            <div className="text-sm text-gray-800 font-medium">
               「{finalText}」
             </div>
           )}

@@ -399,37 +399,47 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 入力フォーム */}
+          {/* 入力セクション */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="レッサーパンダに話しかけてね！"
-                  className="w-full px-5 py-4 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 disabled:bg-gray-50 transition-all duration-200 placeholder-gray-400"
-                  disabled={isDisabled}
-                  aria-label="レッサーパンダへのメッセージ入力"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={!userInput.trim() || isDisabled}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed focus:ring-2 focus:ring-orange-400 focus:outline-none font-medium"
-                aria-label="メッセージを送信してレッサーパンダに話しかける"
-              >
-                {isThinking ? '🤔 考え中...' : isSpeaking ? '🗣️ 鳴いています...' : '💬 話しかける'}
-              </button>
-            </form>
-          </div>
+            <div className="space-y-4">
+              {/* テキスト入力フォーム */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    placeholder="レッサーパンダに話しかけてね！"
+                    className="w-full px-5 py-4 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 disabled:bg-gray-50 transition-all duration-200 placeholder-gray-400"
+                    disabled={isDisabled}
+                    aria-label="レッサーパンダへのメッセージ入力"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!userInput.trim() || isDisabled}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed focus:ring-2 focus:ring-orange-400 focus:outline-none font-medium"
+                  aria-label="メッセージを送信してレッサーパンダに話しかける"
+                >
+                  {isThinking ? '🤔 考え中...' : isSpeaking ? '🗣️ 鳴いています...' : '💬 話しかける'}
+                </button>
+              </form>
 
-          {/* 音声入力 */}
-          <VoiceInput
-            onVoiceInput={handleVoiceInput}
-            disabled={isDisabled}
-            isProcessing={isSpeaking || isThinking}
-          />
+              {/* 区切り線 */}
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-sm text-gray-500 font-medium">または</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+              </div>
+
+              {/* 音声入力 */}
+              <VoiceInput
+                onVoiceInput={handleVoiceInput}
+                disabled={isDisabled}
+                isProcessing={isSpeaking || isThinking}
+              />
+            </div>
+          </div>
 
           {/* プリセット質問 */}
           <QuickChips
