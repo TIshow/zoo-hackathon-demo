@@ -173,14 +173,14 @@ export default function TranslationCaption({
         </div>
 
         {/* Debug info (only in development) */}
-        {process.env.NODE_ENV === 'development' && intentResult && (
+        {process.env.NODE_ENV === 'development' && intentResult && intentResult.features && (
           <div className="text-xs text-slate-500 space-y-1 border-t border-slate-700 pt-2 mt-2">
-            <div>RMS: {intentResult.features.rmsAvg.toFixed(3)}</div>
-            <div>Centroid: {intentResult.features.centroidAvg.toFixed(0)}Hz</div>
-            {intentResult.features.zcrAvg && (
+            <div>RMS: {typeof intentResult.features.rmsAvg === 'number' ? intentResult.features.rmsAvg.toFixed(3) : 'N/A'}</div>
+            <div>Centroid: {typeof intentResult.features.centroidAvg === 'number' ? intentResult.features.centroidAvg.toFixed(0) : 'N/A'}Hz</div>
+            {intentResult.features.zcrAvg && typeof intentResult.features.zcrAvg === 'number' && (
               <div>ZCR: {intentResult.features.zcrAvg.toFixed(3)}</div>
             )}
-            <div>Samples: {intentResult.features.sampleCount}</div>
+            <div>Samples: {intentResult.features.sampleCount || 0}</div>
           </div>
         )}
       </div>

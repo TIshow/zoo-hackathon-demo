@@ -9,6 +9,7 @@ interface IntimacyGaugeProps {
   message: string
   isAnimating?: boolean
   onShareCard?: () => void
+  compact?: boolean
 }
 
 export default function IntimacyGaugeClient({
@@ -17,7 +18,8 @@ export default function IntimacyGaugeClient({
   relationshipName,
   message,
   isAnimating = false,
-  onShareCard
+  onShareCard,
+  compact = false
 }: IntimacyGaugeProps) {
   const [displayLevel, setDisplayLevel] = useState(0)
   const [showLevelUp, setShowLevelUp] = useState(false)
@@ -100,6 +102,52 @@ export default function IntimacyGaugeClient({
 
   const style = getLevelStyle(displayLevel)
   const nextThreshold = getNextThreshold(displayLevel)
+
+  if (compact) {
+    return (
+      <div className="relative">
+        {/* レベルアップ演出 */}
+        {showLevelUp && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-white bg-opacity-90 rounded">
+            <div className="text-center animate-bounce">
+              <div className="text-lg mb-1">🎉</div>
+              <div className="text-xs font-bold text-orange-600">
+                レベルアップ！
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* コンパクトヘッダー */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">{style.icon}</span>
+            <div>
+              <h3 className={`font-medium text-xs ${style.color}`}>
+                {relationshipName}
+              </h3>
+              <p className="text-xs text-gray-500">
+                {totalConversations}回
+              </p>
+            </div>
+          </div>
+          <div className={`text-right ${style.color}`}>
+            <div className="text-sm font-bold">
+              {displayLevel}%
+            </div>
+          </div>
+        </div>
+
+        {/* コンパクトプログレスバー */}
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className={`h-2 ${style.bg} rounded-full transition-all duration-500 ease-out`}
+            style={{ width: `${displayLevel}%` }}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative bg-white rounded-lg p-4 border border-orange-200 shadow-sm">

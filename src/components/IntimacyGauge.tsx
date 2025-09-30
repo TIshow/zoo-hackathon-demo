@@ -35,6 +35,7 @@ interface IntimacyGaugeProps {
   message: string
   isAnimating?: boolean
   onShareCard?: () => void
+  compact?: boolean
 }
 
 export default function IntimacyGauge(props: IntimacyGaugeProps) {
