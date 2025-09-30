@@ -139,12 +139,25 @@ export default function IntimacyGaugeClient({
         </div>
 
         {/* コンパクトプログレスバー */}
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
           <div
             className={`h-2 ${style.bg} rounded-full transition-all duration-500 ease-out`}
             style={{ width: `${displayLevel}%` }}
           />
         </div>
+
+        {/* コンパクト共有ボタン */}
+        {onShareCard && (
+          <div className="flex justify-center">
+            <button
+              onClick={onShareCard}
+              className="text-xs bg-orange-50 hover:bg-orange-100 text-orange-600 px-2 py-1 rounded-full border border-orange-200 hover:border-orange-300 transition-colors flex items-center gap-1"
+            >
+              <span>📤</span>
+              <span>共有</span>
+            </button>
+          </div>
+        )}
       </div>
     )
   }

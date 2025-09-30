@@ -580,7 +580,14 @@ export default function Home() {
           </div>
           <p className="text-xs text-gray-600">
             園内限定の&quot;特別ボイス&quot;も準備中！
-            <span className="font-medium text-orange-600">西山動物園で会いに来てね🐾</span>
+            <a
+              href="https://www.city.sabae.fukui.jp/nishiyama_zoo/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-orange-600 hover:text-orange-700 underline decoration-orange-300 hover:decoration-orange-500 transition-colors"
+            >
+              西山動物園で会いに来てね🐾
+            </a>
           </p>
         </div>
       </footer>
