@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { PandaReply } from '@/data/replies'
-import type { IntentResult, GrainTimeline } from '@/types/audio'
+import type { IntentResult, GrainTimeline, AnalyserBridge } from '@/types/audio'
 import dynamic from 'next/dynamic'
 
 // CSR専用コンポーネント
@@ -24,7 +24,7 @@ interface ChatMessage {
 interface ChatHistoryProps {
   messages: ChatMessage[]
   isAnalysisEnabled: boolean
-  analyserBridge: any
+  analyserBridge: AnalyserBridge | null
   isAnalyzing: boolean
 }
 

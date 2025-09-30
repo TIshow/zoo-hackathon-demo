@@ -19,15 +19,10 @@ import {
   getIntimacyLevelName,
   type PandaMemory
 } from '@/lib/pandaLearning'
-import Bubble from '@/components/Bubble'
-import QuickChips from '@/components/QuickChips'
-import IntimacyGauge from '@/components/IntimacyGauge'
 import MilestoneNotification from '@/components/MilestoneNotification'
 import ShareCardGenerator from '@/components/ShareCardGenerator'
-import VoiceInput from '@/components/VoiceInput'
 
 // 新機能のimport
-import dynamic from 'next/dynamic'
 import { createAnalyser } from '@/lib/audio/analyserBridge'
 import { FeatureAggregator, extractFeatures } from '@/lib/audio/featureExtractor'
 import { IntentClassifier } from '@/lib/audio/intentClassifier'
@@ -36,9 +31,7 @@ import ChatHistory, { type ChatMessage } from '@/components/ChatHistory'
 import FixedInputArea from '@/components/FixedInputArea'
 import StatusPanel from '@/components/StatusPanel'
 
-// CSR専用コンポーネント
-const SpectrumPanel = dynamic(() => import('@/components/SpectrumPanel'), { ssr: false })
-const TranslationCaption = dynamic(() => import('@/components/TranslationCaption'), { ssr: false })
+// CSR専用コンポーネント（StatusPanelで使用）
 
 export default function Home() {
   const [userInput, setUserInput] = useState('')
@@ -535,7 +528,7 @@ export default function Home() {
             しゃべれっさー！
           </h1>
           <p className="text-gray-600 text-sm font-medium">
-            レッサーパンダとの"おしゃべり"体験
+            レッサーパンダとの&quot;おしゃべり&quot;体験
           </p>
         </div>
       </div>
