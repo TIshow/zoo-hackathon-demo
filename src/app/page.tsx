@@ -2,14 +2,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { selectPandaReply, type PandaReply } from '@/data/replies'
-import {
-  speakLikePandaWithAnalysis,
-  speakLikePanda,
-  initializeAudioContext,
-  createVariedSpeechParams,
-  type SpeechAnalysisResult
-} from '@/lib/pandaSpeech'
 import MilestoneNotification from '@/components/MilestoneNotification'
 import ShareCardGenerator from '@/components/ShareCardGenerator'
 
@@ -17,6 +9,7 @@ import ShareCardGenerator from '@/components/ShareCardGenerator'
 import type { AnalyserBridge, IntentResult, GrainTimeline } from '@/types/audio'
 import { useAudioAnalysis } from '@/hooks/useAudioAnalysis'
 import { usePandaLearning } from '@/hooks/usePandaLearning'
+import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
 import ChatHistory, { type ChatMessage } from '@/components/ChatHistory'
 import FixedInputArea from '@/components/FixedInputArea'
 import StatusPanel from '@/components/StatusPanel'
@@ -25,19 +18,20 @@ import StatusPanel from '@/components/StatusPanel'
 
 export default function Home() {
   const [userInput, setUserInput] = useState('')
-  const [currentReply, setCurrentReply] = useState<PandaReply | null>(null)
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [isThinking, setIsThinking] = useState(false)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]) // 会話履歴
   const [isClientMounted, setIsClientMounted] = useState(false)
 
   // 音声解析機能
   const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
-  const audioContextRef = useRef<AudioContext | null>(null)
+
+  // useSpeechSynthesis Hook を使用
+  const speechSynthesis = useSpeechSynthesis({
+    enabled: true
+  })
 
   // useAudioAnalysis Hook を使用
   const audioAnalysis = useAudioAnalysis({
-    audioContext: audioContextRef.current,
+    audioContext: speechSynthesis.audioContext,
     enabled: isAnalysisEnabled
   })
 
@@ -58,9 +52,13 @@ export default function Home() {
     // PandaMemory を初期化
     pandaLearning.initializeMemory()
 
+    // AudioContext を初期化
+    speechSynthesis.initializeAudio()
+
     console.log('📊 Component state:', {
       isAnalysisEnabled,
       hasAnalyserBridge: !!audioAnalysis.analyserBridge,
+      hasAudioContext: !!speechSynthesis.audioContext,
       isClientMounted
     })
   }, [pandaLearning.sessionStartTime]) // sessionStartTimeを依存配列に追加
@@ -68,9 +66,9 @@ export default function Home() {
 
   // 音声発話処理（学習システム統合版）
   const performSpeech = useCallback(async (input: string, isUserInput: boolean = true) => {
-    console.log('🎤 performSpeech called:', { input, isUserInput, isSpeaking, isAnalysisEnabled })
+    console.log('🎤 performSpeech called:', { input, isUserInput, isSpeaking: speechSynthesis.isSpeaking, isAnalysisEnabled })
 
-    if (isSpeaking) {
+    if (speechSynthesis.isSpeaking) {
       console.log('⏸️ Already speaking, returning early')
       return
     }
@@ -98,77 +96,58 @@ export default function Home() {
       }
 
       // 考え中状態を表示（250ms）
-      setIsThinking(true)
+      speechSynthesis.setIsThinking(true)
       await new Promise(resolve => setTimeout(resolve, 250))
-      setIsThinking(false)
+      speechSynthesis.setIsThinking(false)
 
-      setIsSpeaking(true)
-
-      // パンダが返答を選択
-      const reply = selectPandaReply(input)
-
-      // AudioContextの初期化
-      if (!audioContextRef.current) {
-        audioContextRef.current = await initializeAudioContext()
-      }
+      speechSynthesis.setIsSpeaking(true)
 
       // AnalyserBridgeの作成（毎回チェック）
       let currentAnalyserBridge = audioAnalysis.analyserBridge
-      if (isAnalysisEnabled && audioContextRef.current && !currentAnalyserBridge) {
+      if (isAnalysisEnabled && speechSynthesis.audioContext && !currentAnalyserBridge) {
         currentAnalyserBridge = await audioAnalysis.initializeAnalyser()
       }
 
-      // 意図に応じたベースパラメータを生成
-      let intent: 'greeting' | 'hungry' | 'playful' | 'random' = 'random'
-      if (reply.id === 1) intent = 'hungry'
-      else if (reply.id === 2) intent = 'playful'
-      else if (reply.id === 3) intent = 'greeting'
-
-      const baseSpeechParams = createVariedSpeechParams(intent)
+      // 返答を取得してパラメータを生成
+      const reply = speechSynthesis.getReplyForInput(input)
+      const baseSpeechParams = speechSynthesis.createSpeechParams(reply.id)
 
       // 🧠 親密度に基づいてパラメータを調整
-      const intimacyAdjustedParams = pandaLearning.getAdjustedParams(baseSpeechParams)
+      const adjustedParams = pandaLearning.getAdjustedParams(baseSpeechParams)
 
       // 解析機能付き音声再生
-      let speechResult: SpeechAnalysisResult
       if (isAnalysisEnabled && currentAnalyserBridge) {
         // 特徴量サンプリング開始
         audioAnalysis.startAnalysis()
+      }
 
-        speechResult = await speakLikePandaWithAnalysis(
-          audioContextRef.current,
-          reply.src,
-          intimacyAdjustedParams,
-          currentAnalyserBridge
-        )
-      } else {
-        console.log('⚠️ Using traditional speech synthesis:', {
-          isAnalysisEnabled,
-          hasAnalyserBridge: !!audioAnalysis.analyserBridge,
-          hasCurrentAnalyserBridge: !!currentAnalyserBridge
-        })
+      const result = await speechSynthesis.performSpeech({
+        input,
+        isUserInput,
+        adjustedParams,
+        analyserBridge: currentAnalyserBridge,
+        isAnalysisEnabled
+      })
 
-        // 従来の方式
-        const duration = await speakLikePanda(audioContextRef.current, reply.src, intimacyAdjustedParams)
-        speechResult = {
-          actualDuration: duration,
-          grainTimeline: []
-        }
+      if (!result) {
+        throw new Error('Speech synthesis failed')
+      }
 
-        // 解析機能が無効でも基本的な解析結果を生成
-        if (isAnalysisEnabled) {
-          audioAnalysis.setIsAnalyzing(true)
+      const { reply: actualReply, speechResult } = result
 
-          // 基本的な解析結果を生成
-          const basicResult = audioAnalysis.createSafeAnalysisResult('basic')
-          console.log('🎯 Basic analysis result:', { intent: basicResult.intentResult?.intent, confidence: basicResult.intentResult?.confidence })
-          console.log('🐼 Basic panda sound:', basicResult.pandaSound)
-          console.log('🗣️ Basic translation:', basicResult.translation)
-        }
+      // 解析機能が無効でも基本的な解析結果を生成
+      if (isAnalysisEnabled && !currentAnalyserBridge) {
+        audioAnalysis.setIsAnalyzing(true)
+
+        // 基本的な解析結果を生成
+        const basicResult = audioAnalysis.createSafeAnalysisResult('basic')
+        console.log('🎯 Basic analysis result:', { intent: basicResult.intentResult?.intent, confidence: basicResult.intentResult?.confidence })
+        console.log('🐼 Basic panda sound:', basicResult.pandaSound)
+        console.log('🗣️ Basic translation:', basicResult.translation)
       }
 
       // 翻訳表示
-      setCurrentReply(reply)
+      speechSynthesis.setCurrentReply(actualReply)
       if (isUserInput) {
         setUserInput('')
       }
@@ -181,7 +160,7 @@ export default function Home() {
 
         const { intimacyIncreased, newUnlocks: newUnlocksList } = pandaLearning.recordUserConversation({
           userInput: input,
-          pandaReply: { id: reply.id, translation: reply.translation },
+          pandaReply: { id: actualReply.id, translation: actualReply.translation },
           sessionDuration: Math.max(sessionDuration, 5) // 最低5秒のセッション時間
         })
 
@@ -216,7 +195,7 @@ export default function Home() {
       const finalDuration = speechResult.actualDuration + 0.5 // 0.5秒の余裕を追加
 
       setTimeout(() => {
-        setIsSpeaking(false)
+        speechSynthesis.setIsSpeaking(false)
 
         // パンダメッセージを会話履歴に追加（発話完了後）
         if (isUserInput) {
@@ -226,9 +205,9 @@ export default function Home() {
             {
               id: pandaMessageId,
               type: 'panda',
-              content: reply.src,
+              content: actualReply.src,
               timestamp: new Date(),
-              reply,
+              reply: actualReply,
               analysisData: isAnalysisEnabled && audioAnalysis.latestAnalysisResult ? {
                 intentResult: audioAnalysis.latestAnalysisResult.intentResult,
                 pandaSound: audioAnalysis.latestAnalysisResult.pandaSound,
@@ -242,9 +221,9 @@ export default function Home() {
 
     } catch (error) {
       console.error('Speech synthesis failed:', error)
-      setIsSpeaking(false)
+      speechSynthesis.setIsSpeaking(false)
     }
-  }, [isSpeaking, pandaLearning, isAnalysisEnabled, audioAnalysis])
+  }, [speechSynthesis, pandaLearning, isAnalysisEnabled, audioAnalysis])
 
   // クリーンアップ
   useEffect(() => {
@@ -252,27 +231,27 @@ export default function Home() {
       if (autoSpeakTimer.current) {
         clearTimeout(autoSpeakTimer.current)
       }
-      if (audioContextRef.current) {
-        audioContextRef.current.close()
+      if (speechSynthesis.audioContext) {
+        speechSynthesis.audioContext.close()
       }
     }
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {    
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('🚀 Form submitted:', { userInput: userInput.trim(), isSpeaking })
-    if (userInput.trim() && !isSpeaking) {
+    console.log('🚀 Form submitted:', { userInput: userInput.trim(), isSpeaking: speechSynthesis.isSpeaking })
+    if (userInput.trim() && !speechSynthesis.isSpeaking) {
       console.log('✅ Calling performSpeech with:', userInput.trim())
       await performSpeech(userInput.trim())
     } else {
-      console.log('❌ Submit blocked:', { hasInput: !!userInput.trim(), isSpeaking })
+      console.log('❌ Submit blocked:', { hasInput: !!userInput.trim(), isSpeaking: speechSynthesis.isSpeaking })
     }
   }
 
   // よく使う質問から入力されたとき
   const handleQuickQuestion = async (question: string) => {
     console.log('🎯 Quick question clicked:', question)
-    if (!isSpeaking) {
+    if (!speechSynthesis.isSpeaking) {
       console.log('✅ Calling performSpeech from QuickChips')
       await performSpeech(question)
     } else {
@@ -290,11 +269,11 @@ export default function Home() {
 
   const handleVoiceInput = async (voiceText: string) => {
     console.log('🎤 Voice input received:', voiceText)
-    if (!isSpeaking && !isThinking) {
+    if (!speechSynthesis.isSpeaking && !speechSynthesis.isThinking) {
       console.log('✅ Calling performSpeech from VoiceInput')
       await performSpeech(voiceText)
     } else {
-      console.log('❌ Voice input blocked:', { isSpeaking, isThinking })
+      console.log('❌ Voice input blocked:', { isSpeaking: speechSynthesis.isSpeaking, isThinking: speechSynthesis.isThinking })
     }
   }
 
@@ -312,7 +291,7 @@ export default function Home() {
     return milestoneData[id] || id
   }
 
-  const isDisabled = isSpeaking || isThinking
+  const isDisabled = speechSynthesis.isSpeaking || speechSynthesis.isThinking
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex flex-col">
@@ -349,8 +328,8 @@ export default function Home() {
         onQuickQuestion={handleQuickQuestion}
         onVoiceInput={handleVoiceInput}
         isDisabled={isDisabled}
-        isThinking={isThinking}
-        isSpeaking={isSpeaking}
+        isThinking={speechSynthesis.isThinking}
+        isSpeaking={speechSynthesis.isSpeaking}
       />
 
       {/* フローティングステータスパネル */}
@@ -414,7 +393,7 @@ export default function Home() {
             relationshipMessage: pandaLearning.getIntimacyDisplayMessage(),
             timestamp: new Date()
           }}
-          audioContext={audioContextRef.current}
+          audioContext={speechSynthesis.audioContext}
           onClose={() => pandaLearning.setShowShareCard(false)}
         />
       )}
