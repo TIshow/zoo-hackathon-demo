@@ -22,11 +22,9 @@ import {
 import MilestoneNotification from '@/components/MilestoneNotification'
 import ShareCardGenerator from '@/components/ShareCardGenerator'
 
-// 新機能のimport
-import { createAnalyser } from '@/lib/audio/analyserBridge'
-import { FeatureAggregator, extractFeatures } from '@/lib/audio/featureExtractor'
-import { IntentClassifier } from '@/lib/audio/intentClassifier'
+// 音声解析機能のimport
 import type { AnalyserBridge, IntentResult, GrainTimeline } from '@/types/audio'
+import { useAudioAnalysis } from '@/hooks/useAudioAnalysis'
 import ChatHistory, { type ChatMessage } from '@/components/ChatHistory'
 import FixedInputArea from '@/components/FixedInputArea'
 import StatusPanel from '@/components/StatusPanel'
@@ -68,30 +66,17 @@ export default function Home() {
   const [showShareCard, setShowShareCard] = useState(false)
   const [isClientMounted, setIsClientMounted] = useState(false)
 
-  // 新機能のstate
-  const [analyserBridge, setAnalyserBridge] = useState<AnalyserBridge | null>(null)
+  // 音声解析機能
   const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
-  const [currentIntentResult, setCurrentIntentResult] = useState<IntentResult | null>(null)
-  const [currentPandaSound, setCurrentPandaSound] = useState('')
-  const [currentTranslation, setCurrentTranslation] = useState('')
-  const [currentGrainTimeline, setCurrentGrainTimeline] = useState<GrainTimeline[]>([])
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-
-  // 最新の解析結果を永続化（音声終了後も保持）
-  const [latestAnalysisResult, setLatestAnalysisResult] = useState<{
-    intentResult: IntentResult | null
-    pandaSound: string
-    translation: string
-    grainTimeline: GrainTimeline[]
-  } | null>(null)
-
-  const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
 
-  // 新機能のref
-  const featureAggregatorRef = useRef<FeatureAggregator>(new FeatureAggregator())
-  const intentClassifierRef = useRef<IntentClassifier>(new IntentClassifier())
-  const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  // useAudioAnalysis Hook を使用
+  const audioAnalysis = useAudioAnalysis({
+    audioContext: audioContextRef.current,
+    enabled: isAnalysisEnabled
+  })
+
+  const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
 
   // クライアントサイドでの初期化
   useEffect(() => {
@@ -111,35 +96,11 @@ export default function Home() {
 
     console.log('📊 Component state:', {
       isAnalysisEnabled,
-      hasAnalyserBridge: !!analyserBridge,
+      hasAnalyserBridge: !!audioAnalysis.analyserBridge,
       isClientMounted
     })
   }, [sessionStartTime]) // sessionStartTimeを依存配列に追加
 
-  // 安全な解析結果を生成するヘルパー関数
-  const createSafeAnalysisResult = useCallback((type: 'basic' | 'fallback' = 'basic') => {
-    const features = type === 'fallback' ? {
-      rmsAvg: Math.random() * 0.8 + 0.2,
-      rmsMax: Math.random() * 1.0 + 0.5,
-      centroidAvg: Math.random() * 2000 + 500,
-      centroidMax: Math.random() * 3000 + 1000,
-      zcrAvg: Math.random() * 0.2 + 0.05,
-      sampleCount: 1
-    } : {
-      rmsAvg: 0.5,
-      rmsMax: 0.8,
-      centroidAvg: 1000,
-      centroidMax: 1500,
-      zcrAvg: 0.1,
-      sampleCount: 1
-    }
-
-    const intentResult = intentClassifierRef.current.classify(features)
-    const pandaSound = intentClassifierRef.current.getRandomPandaSound(intentResult.intent)
-    const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
-
-    return { intentResult, pandaSound, translation }
-  }, [])
 
   // 音声発話処理（学習システム統合版）
   const performSpeech = useCallback(async (input: string, isUserInput: boolean = true) => {
@@ -154,11 +115,7 @@ export default function Home() {
 
     // 新しい解析を開始する前に、前回の状態をクリア
     if (isAnalysisEnabled) {
-      console.log('🔄 Clearing previous analysis state...')
-      setCurrentIntentResult(null)
-      setCurrentPandaSound('')
-      setCurrentTranslation('')
-      setCurrentGrainTimeline([])
+      audioAnalysis.clearCurrentResults()
     }
 
     try {
@@ -192,17 +149,9 @@ export default function Home() {
       }
 
       // AnalyserBridgeの作成（毎回チェック）
-      let currentAnalyserBridge = analyserBridge
+      let currentAnalyserBridge = audioAnalysis.analyserBridge
       if (isAnalysisEnabled && audioContextRef.current && !currentAnalyserBridge) {
-        try {
-          console.log('🔬 Creating analyser bridge...')
-          const analyser = createAnalyser(audioContextRef.current)
-          setAnalyserBridge(analyser)
-          currentAnalyserBridge = analyser // 今回の処理で使用
-          console.log('✅ Analyser bridge created successfully')
-        } catch (error) {
-          console.error('❌ Failed to create analyser:', error)
-        }
+        currentAnalyserBridge = await audioAnalysis.initializeAnalyser()
       }
 
       // 意図に応じたベースパラメータを生成
@@ -223,25 +172,8 @@ export default function Home() {
       // 解析機能付き音声再生
       let speechResult: SpeechAnalysisResult
       if (isAnalysisEnabled && currentAnalyserBridge) {
-        console.log('🎵 Starting analysis-enabled speech synthesis with analyser:', !!currentAnalyserBridge)
-
         // 特徴量サンプリング開始
-        setIsAnalyzing(true)
-        featureAggregatorRef.current.clear()
-
-        // 定期的に特徴量を抽出
-        analysisIntervalRef.current = setInterval(() => {
-          if (currentAnalyserBridge) {
-            const frequencyData = currentAnalyserBridge.getFrequencyFrame()
-            const timeData = currentAnalyserBridge.getTimeFrame()
-            const features = extractFeatures(frequencyData, timeData)
-            featureAggregatorRef.current.addSample(features)
-            // ログでサンプリングを確認
-            if (featureAggregatorRef.current.getAggregate().sampleCount % 10 === 0) {
-              console.log('📊 Sampling features:', featureAggregatorRef.current.getAggregate().sampleCount)
-            }
-          }
-        }, 50) // 20Hz サンプリング
+        audioAnalysis.startAnalysis()
 
         speechResult = await speakLikePandaWithAnalysis(
           audioContextRef.current,
@@ -252,7 +184,7 @@ export default function Home() {
       } else {
         console.log('⚠️ Using traditional speech synthesis:', {
           isAnalysisEnabled,
-          hasAnalyserBridge: !!analyserBridge,
+          hasAnalyserBridge: !!audioAnalysis.analyserBridge,
           hasCurrentAnalyserBridge: !!currentAnalyserBridge
         })
 
@@ -265,26 +197,13 @@ export default function Home() {
 
         // 解析機能が無効でも基本的な解析結果を生成
         if (isAnalysisEnabled) {
-          setIsAnalyzing(true)
+          audioAnalysis.setIsAnalyzing(true)
 
           // 基本的な解析結果を生成
-          const { intentResult: basicIntentResult, pandaSound: basicPandaSound, translation: basicTranslation } = createSafeAnalysisResult('basic')
-
-          console.log('🎯 Basic analysis result:', { intent: basicIntentResult.intent, confidence: basicIntentResult.confidence })
-          console.log('🐼 Basic panda sound:', basicPandaSound)
-          console.log('🗣️ Basic translation:', basicTranslation)
-
-          setCurrentIntentResult(basicIntentResult)
-          setCurrentPandaSound(basicPandaSound)
-          setCurrentTranslation(basicTranslation)
-          setCurrentGrainTimeline([])
-
-          setLatestAnalysisResult({
-            intentResult: basicIntentResult,
-            pandaSound: basicPandaSound,
-            translation: basicTranslation,
-            grainTimeline: []
-          })
+          const basicResult = audioAnalysis.createSafeAnalysisResult('basic')
+          console.log('🎯 Basic analysis result:', { intent: basicResult.intentResult?.intent, confidence: basicResult.intentResult?.confidence })
+          console.log('🐼 Basic panda sound:', basicResult.pandaSound)
+          console.log('🗣️ Basic translation:', basicResult.translation)
         }
       }
 
@@ -334,74 +253,12 @@ export default function Home() {
 
       // 解析結果の処理
       if (isAnalysisEnabled) {
-        console.log('🔍 Processing analysis results...', {
-          hasInterval: !!analysisIntervalRef.current,
-          isAnalysisEnabled,
-          speechResultDuration: speechResult.actualDuration
-        })
-
-        // サンプリング停止
-        if (analysisIntervalRef.current) {
-          clearInterval(analysisIntervalRef.current)
-          analysisIntervalRef.current = null
-        }
-
-        // 特徴量集計と分類
-        const aggregate = featureAggregatorRef.current.getAggregate()
-        console.log('📊 Feature aggregate:', aggregate)
-
-        if (aggregate.sampleCount > 0) {
-          const intentResult = intentClassifierRef.current.classify(aggregate)
-          const pandaSound = intentClassifierRef.current.getRandomPandaSound(intentResult.intent)
-          const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
-
-          console.log('🎯 Classification result:', { intent: intentResult.intent, confidence: intentResult.confidence })
-          console.log('🐼 Panda sound:', pandaSound)
-          console.log('🗣️ Translation:', translation)
-
-          // 現在の解析結果を設定
-          setCurrentIntentResult(intentResult)
-          setCurrentPandaSound(pandaSound)
-          setCurrentTranslation(translation)
-          setCurrentGrainTimeline(speechResult.grainTimeline)
-
-          // 解析結果を永続化（音声終了後も保持）
-          setLatestAnalysisResult({
-            intentResult,
-            pandaSound,
-            translation,
-            grainTimeline: speechResult.grainTimeline
-          })
-
-          console.log('✅ Analysis results set successfully')
-        } else {
-          console.warn('⚠️ No samples collected for analysis, generating fallback results')
-
-          // サンプルがなくても基本的な解析結果を生成
-          const { intentResult: fallbackIntentResult, pandaSound: fallbackPandaSound, translation: fallbackTranslation } = createSafeAnalysisResult('fallback')
-
-          console.log('🎯 Fallback analysis result:', { intent: fallbackIntentResult.intent, confidence: fallbackIntentResult.confidence })
-          console.log('🐼 Fallback panda sound:', fallbackPandaSound)
-          console.log('🗣️ Fallback translation:', fallbackTranslation)
-
-          setCurrentIntentResult(fallbackIntentResult)
-          setCurrentPandaSound(fallbackPandaSound)
-          setCurrentTranslation(fallbackTranslation)
-          setCurrentGrainTimeline(speechResult.grainTimeline)
-
-          setLatestAnalysisResult({
-            intentResult: fallbackIntentResult,
-            pandaSound: fallbackPandaSound,
-            translation: fallbackTranslation,
-            grainTimeline: speechResult.grainTimeline
-          })
-
-          console.log('✅ Fallback analysis results set successfully')
-        }
+        // 解析停止 & 結果生成
+        audioAnalysis.stopAnalysisAndProcess(speechResult.grainTimeline)
 
         // 一定時間後に解析状態を終了
         setTimeout(() => {
-          setIsAnalyzing(false)
+          audioAnalysis.setIsAnalyzing(false)
         }, speechResult.actualDuration * 1000 + 500)
       }
 
@@ -422,11 +279,11 @@ export default function Home() {
               content: reply.src,
               timestamp: new Date(),
               reply,
-              analysisData: isAnalysisEnabled && latestAnalysisResult ? {
-                intentResult: latestAnalysisResult.intentResult,
-                pandaSound: latestAnalysisResult.pandaSound,
-                translation: latestAnalysisResult.translation,
-                grainTimeline: latestAnalysisResult.grainTimeline
+              analysisData: isAnalysisEnabled && audioAnalysis.latestAnalysisResult ? {
+                intentResult: audioAnalysis.latestAnalysisResult.intentResult,
+                pandaSound: audioAnalysis.latestAnalysisResult.pandaSound,
+                translation: audioAnalysis.latestAnalysisResult.translation,
+                grainTimeline: audioAnalysis.latestAnalysisResult.grainTimeline
               } : undefined
             }
           ])
@@ -437,7 +294,7 @@ export default function Home() {
       console.error('Speech synthesis failed:', error)
       setIsSpeaking(false)
     }
-  }, [isSpeaking, pandaMemory, sessionStartTime, createSafeAnalysisResult])
+  }, [isSpeaking, pandaMemory, sessionStartTime, isAnalysisEnabled, audioAnalysis])
 
   // クリーンアップ
   useEffect(() => {
@@ -475,16 +332,6 @@ export default function Home() {
 
   const toggleAnalysis = () => {
     setIsAnalysisEnabled(!isAnalysisEnabled)
-
-    // 解析無効化時は進行中の解析のみクリア（永続化された結果は保持）
-    if (isAnalysisEnabled) {
-      setIsAnalyzing(false)
-
-      if (analysisIntervalRef.current) {
-        clearInterval(analysisIntervalRef.current)
-        analysisIntervalRef.current = null
-      }
-    }
   }
 
   const handleShareCard = () => {
@@ -539,8 +386,8 @@ export default function Home() {
         <ChatHistory
           messages={chatMessages}
           isAnalysisEnabled={isAnalysisEnabled}
-          analyserBridge={analyserBridge}
-          isAnalyzing={isAnalyzing}
+          analyserBridge={audioAnalysis.analyserBridge}
+          isAnalyzing={audioAnalysis.isAnalyzing}
         />
       </div>
 
@@ -567,9 +414,9 @@ export default function Home() {
         onShareCard={handleShareCard}
         isClientMounted={isClientMounted}
         getMilestoneTitle={getMilestoneTitle}
-        analyserBridge={analyserBridge}
-        latestAnalysisResult={latestAnalysisResult}
-        isAnalyzing={isAnalyzing}
+        analyserBridge={audioAnalysis.analyserBridge}
+        latestAnalysisResult={audioAnalysis.latestAnalysisResult}
+        isAnalyzing={audioAnalysis.isAnalyzing}
       />
 
       {/* フッター（固定） */}
