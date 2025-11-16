@@ -10,7 +10,8 @@ import type { AnalyserBridge, IntentResult, GrainTimeline } from '@/types/audio'
 import { useAudioAnalysis } from '@/hooks/useAudioAnalysis'
 import { usePandaLearning } from '@/hooks/usePandaLearning'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
-import ChatHistory, { type ChatMessage } from '@/components/ChatHistory'
+import { useChatHistory } from '@/hooks/useChatHistory'
+import ChatHistory from '@/components/ChatHistory'
 import FixedInputArea from '@/components/FixedInputArea'
 import StatusPanel from '@/components/StatusPanel'
 
@@ -18,24 +19,23 @@ import StatusPanel from '@/components/StatusPanel'
 
 export default function Home() {
   const [userInput, setUserInput] = useState('')
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]) // 会話履歴
   const [isClientMounted, setIsClientMounted] = useState(false)
 
   // 音声解析機能
   const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
 
-  // useSpeechSynthesis Hook を使用
+  // Custom Hooks
+  const chatHistory = useChatHistory()
+
   const speechSynthesis = useSpeechSynthesis({
     enabled: true
   })
 
-  // useAudioAnalysis Hook を使用
   const audioAnalysis = useAudioAnalysis({
     audioContext: speechSynthesis.audioContext,
     enabled: isAnalysisEnabled
   })
 
-  // usePandaLearning Hook を使用
   const pandaLearning = usePandaLearning({
     enabled: true
   })
@@ -82,17 +82,8 @@ export default function Home() {
 
     try {
       // ユーザーメッセージを会話履歴に追加（isUserInputがtrueの場合のみ）
-      const userMessageId = Date.now().toString()
       if (isUserInput) {
-        setChatMessages(prev => [
-          ...prev,
-          {
-            id: userMessageId,
-            type: 'user',
-            content: input,
-            timestamp: new Date()
-          }
-        ])
+        chatHistory.addUserMessage(input)
       }
 
       // 考え中状態を表示（250ms）
@@ -199,23 +190,14 @@ export default function Home() {
 
         // パンダメッセージを会話履歴に追加（発話完了後）
         if (isUserInput) {
-          const pandaMessageId = Date.now().toString() + '_panda'
-          setChatMessages(prev => [
-            ...prev,
-            {
-              id: pandaMessageId,
-              type: 'panda',
-              content: actualReply.src,
-              timestamp: new Date(),
-              reply: actualReply,
-              analysisData: isAnalysisEnabled && audioAnalysis.latestAnalysisResult ? {
-                intentResult: audioAnalysis.latestAnalysisResult.intentResult,
-                pandaSound: audioAnalysis.latestAnalysisResult.pandaSound,
-                translation: audioAnalysis.latestAnalysisResult.translation,
-                grainTimeline: audioAnalysis.latestAnalysisResult.grainTimeline
-              } : undefined
-            }
-          ])
+          const analysisData = isAnalysisEnabled && audioAnalysis.latestAnalysisResult ? {
+            intentResult: audioAnalysis.latestAnalysisResult.intentResult,
+            pandaSound: audioAnalysis.latestAnalysisResult.pandaSound,
+            translation: audioAnalysis.latestAnalysisResult.translation,
+            grainTimeline: audioAnalysis.latestAnalysisResult.grainTimeline
+          } : undefined
+
+          chatHistory.addPandaMessage(actualReply, analysisData)
         }
       }, finalDuration * 1000)
 
@@ -223,7 +205,7 @@ export default function Home() {
       console.error('Speech synthesis failed:', error)
       speechSynthesis.setIsSpeaking(false)
     }
-  }, [speechSynthesis, pandaLearning, isAnalysisEnabled, audioAnalysis])
+  }, [speechSynthesis, pandaLearning, isAnalysisEnabled, audioAnalysis, chatHistory])
 
   // クリーンアップ
   useEffect(() => {
@@ -313,7 +295,7 @@ export default function Home() {
       {/* メインコンテンツ（チャット履歴） */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <ChatHistory
-          messages={chatMessages}
+          messages={chatHistory.messages}
           isAnalysisEnabled={isAnalysisEnabled}
           analyserBridge={audioAnalysis.analyserBridge}
           isAnalyzing={audioAnalysis.isAnalyzing}
