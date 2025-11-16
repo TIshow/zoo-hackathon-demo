@@ -374,8 +374,55 @@ npm run start
 npm run lint
 
 # TypeScript型チェック
-npx tsc --noEmit
+npm run type-check
+
+# マージ前チェック（全て実行）
+npm run pre-merge
 ```
+
+## 🔄 マージ前チェックリスト
+
+Pull Request を作成する前に、以下のコマンドで全てのチェックを実行してください：
+
+```bash
+npm run pre-merge
+```
+
+このコマンドは以下を順次実行します：
+
+1. **型チェック** (`npm run type-check`)
+   - TypeScript の型エラーを検出
+   - `tsc --noEmit` で実行
+
+2. **ビルドチェック** (`npm run build`)
+   - Next.js のプロダクションビルドを実行
+   - ビルドエラーを検出
+
+3. **リントチェック** (`npm run lint`)
+   - ESLint でコード品質をチェック
+   - 警告は許容されますが、エラーは修正必須
+
+### 手動チェック項目
+
+CI で自動チェックされない項目：
+
+- [ ] 音声ファイル（`public/sounds/*.mp3`）が正しく配置されている
+- [ ] ローカル環境で `npm run dev` が正常に起動する
+- [ ] 主要な機能（会話・音声再生・解析）が動作する
+- [ ] コンソールに重大なエラーが出ていない
+- [ ] モバイルブラウザでの動作確認（iOS Safari / Android Chrome）
+
+### GitHub Actions CI
+
+Pull Request を作成すると、以下のチェックが自動実行されます：
+
+- ✅ TypeScript 型チェック
+- ✅ Next.js ビルド
+- ⚠️ ESLint（警告は許容）
+
+**main ブランチへのマージ前に、全てのチェックが通過している必要があります。**
+
+CI の設定: `.github/workflows/ci.yml`
 
 ## 📄 ライセンス
 
