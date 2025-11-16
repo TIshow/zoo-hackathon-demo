@@ -183,7 +183,7 @@ export default function Home() {
 
       setIsSpeaking(true)
 
-      // 返答を選択
+      // パンダが返答を選択
       const reply = selectPandaReply(input)
 
       // AudioContextの初期化
@@ -462,6 +462,7 @@ export default function Home() {
     }
   }
 
+  // よく使う質問から入力されたとき
   const handleQuickQuestion = async (question: string) => {
     console.log('🎯 Quick question clicked:', question)
     if (!isSpeaking) {
