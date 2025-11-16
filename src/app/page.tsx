@@ -10,21 +10,13 @@ import {
   createVariedSpeechParams,
   type SpeechAnalysisResult
 } from '@/lib/pandaSpeech'
-import {
-  loadPandaMemory,
-  savePandaMemory,
-  recordConversation,
-  getIntimacyAdjustedParams,
-  getIntimacyMessage,
-  getIntimacyLevelName,
-  type PandaMemory
-} from '@/lib/pandaLearning'
 import MilestoneNotification from '@/components/MilestoneNotification'
 import ShareCardGenerator from '@/components/ShareCardGenerator'
 
 // 音声解析機能のimport
 import type { AnalyserBridge, IntentResult, GrainTimeline } from '@/types/audio'
 import { useAudioAnalysis } from '@/hooks/useAudioAnalysis'
+import { usePandaLearning } from '@/hooks/usePandaLearning'
 import ChatHistory, { type ChatMessage } from '@/components/ChatHistory'
 import FixedInputArea from '@/components/FixedInputArea'
 import StatusPanel from '@/components/StatusPanel'
@@ -37,33 +29,6 @@ export default function Home() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]) // 会話履歴
-
-  // 学習システム関連（SSR対応のため初期値を使用）
-  const [pandaMemory, setPandaMemory] = useState<PandaMemory>(() => {
-    // SSR時は常に初期値を返す
-    if (typeof window === 'undefined') {
-      return {
-        totalConversations: 0,
-        uniqueDays: 0,
-        firstMeeting: null,
-        lastSeen: null,
-        favoriteQuestions: [],
-        conversationHistory: [],
-        totalSessionTime: 0,
-        intimacyLevel: 0,
-        longestSession: 0,
-        consecutiveDays: 0,
-        preferredResponseStyle: 'mixed' as const,
-        specialUnlocks: []
-      }
-    }
-    return loadPandaMemory()
-  })
-  const [intimacyAnimating, setIntimacyAnimating] = useState(false)
-  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null)
-  const [newUnlocks, setNewUnlocks] = useState<string[]>([])
-  const [showMilestone, setShowMilestone] = useState(false)
-  const [showShareCard, setShowShareCard] = useState(false)
   const [isClientMounted, setIsClientMounted] = useState(false)
 
   // 音声解析機能
@@ -76,6 +41,11 @@ export default function Home() {
     enabled: isAnalysisEnabled
   })
 
+  // usePandaLearning Hook を使用
+  const pandaLearning = usePandaLearning({
+    enabled: true
+  })
+
   const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
 
   // クライアントサイドでの初期化
@@ -85,21 +55,15 @@ export default function Home() {
     // クライアントマウント検知
     setIsClientMounted(true)
 
-    // セッション開始時刻の初期化
-    if (!sessionStartTime) {
-      setSessionStartTime(new Date())
-    }
-
-    // localStorageからpandaMemoryを読み込み（初回のみ）
-    const actualMemory = loadPandaMemory()
-    setPandaMemory(actualMemory)
+    // PandaMemory を初期化
+    pandaLearning.initializeMemory()
 
     console.log('📊 Component state:', {
       isAnalysisEnabled,
       hasAnalyserBridge: !!audioAnalysis.analyserBridge,
       isClientMounted
     })
-  }, [sessionStartTime]) // sessionStartTimeを依存配列に追加
+  }, [pandaLearning.sessionStartTime]) // sessionStartTimeを依存配列に追加
 
 
   // 音声発話処理（学習システム統合版）
@@ -163,11 +127,7 @@ export default function Home() {
       const baseSpeechParams = createVariedSpeechParams(intent)
 
       // 🧠 親密度に基づいてパラメータを調整
-      const intimacyAdjustedParams = getIntimacyAdjustedParams(
-        baseSpeechParams,
-        pandaMemory.intimacyLevel,
-        pandaMemory.preferredResponseStyle
-      )
+      const intimacyAdjustedParams = pandaLearning.getAdjustedParams(baseSpeechParams)
 
       // 解析機能付き音声再生
       let speechResult: SpeechAnalysisResult
@@ -216,39 +176,29 @@ export default function Home() {
       // 🧠 会話を記録して学習データを更新
       if (isUserInput) {
         // sessionStartTime が null の場合は現在の時刻で初期化
-        const startTime = sessionStartTime || new Date()
+        const startTime = pandaLearning.sessionStartTime || new Date()
         const sessionDuration = Math.floor((Date.now() - startTime.getTime()) / 1000)
-        const previousIntimacy = pandaMemory.intimacyLevel
-        const previousUnlocks = [...pandaMemory.specialUnlocks]
 
-        const updatedMemory = recordConversation(
-          pandaMemory,
-          input,
-          { id: reply.id, translation: reply.translation },
-          Math.max(sessionDuration, 5) // 最低5秒のセッション時間
-        )
-
-        setPandaMemory(updatedMemory)
-        savePandaMemory(updatedMemory)
+        const { intimacyIncreased, newUnlocks: newUnlocksList } = pandaLearning.recordUserConversation({
+          userInput: input,
+          pandaReply: { id: reply.id, translation: reply.translation },
+          sessionDuration: Math.max(sessionDuration, 5) // 最低5秒のセッション時間
+        })
 
         // 親密度が上がったらアニメーション
-        if (updatedMemory.intimacyLevel > previousIntimacy) {
-          setIntimacyAnimating(true)
-          setTimeout(() => setIntimacyAnimating(false), 2000)
+        if (intimacyIncreased) {
+          pandaLearning.setIntimacyAnimating(true)
+          setTimeout(() => pandaLearning.setIntimacyAnimating(false), 2000)
         }
 
         // 新しい解放があった場合の通知
-        const newUnlocksList = updatedMemory.specialUnlocks.filter(
-          unlock => !previousUnlocks.includes(unlock)
-        )
-
         if (newUnlocksList.length > 0) {
-          setNewUnlocks(newUnlocksList)
-          setShowMilestone(true)
+          pandaLearning.setNewUnlocks(newUnlocksList)
+          pandaLearning.setShowMilestone(true)
         }
 
         // セッション開始時刻をリセット
-        setSessionStartTime(new Date())
+        pandaLearning.resetSessionStartTime()
       }
 
       // 解析結果の処理
@@ -294,7 +244,7 @@ export default function Home() {
       console.error('Speech synthesis failed:', error)
       setIsSpeaking(false)
     }
-  }, [isSpeaking, pandaMemory, sessionStartTime, isAnalysisEnabled, audioAnalysis])
+  }, [isSpeaking, pandaLearning, isAnalysisEnabled, audioAnalysis])
 
   // クリーンアップ
   useEffect(() => {
@@ -335,7 +285,7 @@ export default function Home() {
   }
 
   const handleShareCard = () => {
-    setShowShareCard(true)
+    pandaLearning.setShowShareCard(true)
   }
 
   const handleVoiceInput = async (voiceText: string) => {
@@ -407,10 +357,10 @@ export default function Home() {
       <StatusPanel
         isAnalysisEnabled={isAnalysisEnabled}
         onToggleAnalysis={toggleAnalysis}
-        pandaMemory={pandaMemory}
-        relationshipName={getIntimacyLevelName(pandaMemory.intimacyLevel)}
-        intimacyMessage={getIntimacyMessage(pandaMemory.intimacyLevel)}
-        isAnimating={intimacyAnimating}
+        pandaMemory={pandaLearning.pandaMemory}
+        relationshipName={pandaLearning.getIntimacyDisplayLevel()}
+        intimacyMessage={pandaLearning.getIntimacyDisplayMessage()}
+        isAnimating={pandaLearning.intimacyAnimating}
         onShareCard={handleShareCard}
         isClientMounted={isClientMounted}
         getMilestoneTitle={getMilestoneTitle}
@@ -441,31 +391,31 @@ export default function Home() {
       </footer>
 
       {/* マイルストーン通知 */}
-      {showMilestone && (
+      {pandaLearning.showMilestone && (
         <MilestoneNotification
-          newUnlocks={newUnlocks}
+          newUnlocks={pandaLearning.newUnlocks}
           onClose={() => {
-            setShowMilestone(false)
-            setNewUnlocks([])
+            pandaLearning.setShowMilestone(false)
+            pandaLearning.setNewUnlocks([])
           }}
         />
       )}
 
       {/* シェアカード生成 */}
-      {showShareCard && (
+      {pandaLearning.showShareCard && (
         <ShareCardGenerator
           cardData={{
-            intimacyLevel: pandaMemory.intimacyLevel,
-            intimacyLevelName: getIntimacyLevelName(pandaMemory.intimacyLevel),
-            totalConversations: pandaMemory.totalConversations,
-            uniqueDays: pandaMemory.uniqueDays,
-            consecutiveDays: pandaMemory.consecutiveDays,
-            specialUnlocks: pandaMemory.specialUnlocks,
-            relationshipMessage: getIntimacyMessage(pandaMemory.intimacyLevel),
+            intimacyLevel: pandaLearning.pandaMemory.intimacyLevel,
+            intimacyLevelName: pandaLearning.getIntimacyDisplayLevel(),
+            totalConversations: pandaLearning.pandaMemory.totalConversations,
+            uniqueDays: pandaLearning.pandaMemory.uniqueDays,
+            consecutiveDays: pandaLearning.pandaMemory.consecutiveDays,
+            specialUnlocks: pandaLearning.pandaMemory.specialUnlocks,
+            relationshipMessage: pandaLearning.getIntimacyDisplayMessage(),
             timestamp: new Date()
           }}
           audioContext={audioContextRef.current}
-          onClose={() => setShowShareCard(false)}
+          onClose={() => pandaLearning.setShowShareCard(false)}
         />
       )}
     </div>
