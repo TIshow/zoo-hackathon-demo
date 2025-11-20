@@ -44,10 +44,6 @@ export default function Home() {
       return
     }
 
-    if (isAnalysisEnabled) {
-      audioAnalysis.clearCurrentResults()
-    }
-
     try {
       if (isUserInput) {
         chatHistory.addUserMessage(input)
@@ -91,11 +87,6 @@ export default function Home() {
       }
 
       const { reply: actualReply, speechResult } = result
-
-      if (isAnalysisEnabled && !currentAnalyserBridge) {
-        audioAnalysis.setIsAnalyzing(true)
-        audioAnalysis.createSafeAnalysisResult('basic')
-      }
 
       speechSynthesis.setCurrentReply(actualReply)
       if (isUserInput) {

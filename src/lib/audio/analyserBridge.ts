@@ -1,7 +1,7 @@
 // AnalyserNode integration with existing audio pipeline
 
 import type { AnalyserConfig, AnalyserBridge } from '@/types/audio'
-import { createTypedArray, createFloat32Array } from './audioContextHelper'
+import { createTypedArray } from './audioContextHelper'
 
 const DEFAULT_ANALYSER_CONFIG: AnalyserConfig = {
   fftSize: 1024,

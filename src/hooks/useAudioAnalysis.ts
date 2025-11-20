@@ -31,17 +31,11 @@ export interface UseAudioAnalysisReturn {
   analyserBridge: AnalyserBridge | null
   isAnalyzing: boolean
   latestAnalysisResult: AnalysisResult | null
-  currentIntentResult: IntentResult | null
-  currentPandaSound: string
-  currentTranslation: string
-  currentGrainTimeline: GrainTimeline[]
 
   // Actions
   initializeAnalyser: (ctx?: AudioContext) => Promise<AnalyserBridge | null>
-  clearCurrentResults: () => void
   startAnalysis: (bridge?: AnalyserBridge) => void
   stopAnalysisAndProcess: (grainTimeline: GrainTimeline[]) => AnalysisResult | null
-  createSafeAnalysisResult: (type?: 'basic' | 'fallback') => AnalysisResult
   setIsAnalyzing: (value: boolean) => void
 }
 
@@ -52,12 +46,6 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
   const [analyserBridge, setAnalyserBridge] = useState<AnalyserBridge | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [latestAnalysisResult, setLatestAnalysisResult] = useState<AnalysisResult | null>(null)
-
-  // 一時的な解析結果（音声再生中のみ有効）
-  const [currentIntentResult, setCurrentIntentResult] = useState<IntentResult | null>(null)
-  const [currentPandaSound, setCurrentPandaSound] = useState('')
-  const [currentTranslation, setCurrentTranslation] = useState('')
-  const [currentGrainTimeline, setCurrentGrainTimeline] = useState<GrainTimeline[]>([])
 
   // Refs
   const featureAggregatorRef = useRef<FeatureAggregator>(new FeatureAggregator())
@@ -94,39 +82,6 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
     }
   }, [audioContext, enabled, analyserBridge])
 
-  // 現在の解析結果をクリア
-  const clearCurrentResults = useCallback(() => {
-    console.log('🔄 Clearing previous analysis state...')
-    setCurrentIntentResult(null)
-    setCurrentPandaSound('')
-    setCurrentTranslation('')
-    setCurrentGrainTimeline([])
-  }, [])
-
-  // フォールバック結果を生成
-  const createSafeAnalysisResult = useCallback((type: 'basic' | 'fallback' = 'basic'): AnalysisResult => {
-    const features = type === 'fallback' ? {
-      rmsAvg: Math.random() * 0.8 + 0.2,
-      rmsMax: Math.random() * 1.0 + 0.5,
-      centroidAvg: Math.random() * 2000 + 500,
-      centroidMax: Math.random() * 3000 + 1000,
-      zcrAvg: Math.random() * 0.2 + 0.05,
-      sampleCount: 1
-    } : {
-      rmsAvg: 0.5,
-      rmsMax: 0.8,
-      centroidAvg: 1000,
-      centroidMax: 1500,
-      zcrAvg: 0.1,
-      sampleCount: 1
-    }
-
-    const intentResult = intentClassifierRef.current.classify(features)
-    const pandaSound = intentClassifierRef.current.getRandomPandaSound(intentResult.intent)
-    const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
-
-    return { intentResult, pandaSound, translation, grainTimeline: [] }
-  }, [])
 
   // 解析開始
   const startAnalysis = useCallback((bridge?: AnalyserBridge) => {
@@ -147,47 +102,22 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
       clearInterval(analysisIntervalRef.current)
     }
 
-    console.log('⏱️ Starting sampling interval...')
-
-    let intervalCallCount = 0
-
     // 50ms毎に特徴量をサンプリング
     analysisIntervalRef.current = setInterval(() => {
-      intervalCallCount++
+      if (bridgeToUse) {
+        const frequencyData = bridgeToUse.getFrequencyFrame()
+        const timeData = bridgeToUse.getTimeFrame()
+        const features = extractFeatures(frequencyData, timeData)
+        featureAggregatorRef.current.addSample(features)
 
-      if (intervalCallCount === 1) {
-        console.log('✨ First interval callback executed')
-      }
+        const currentCount = featureAggregatorRef.current.getAggregate().sampleCount
 
-      try {
-        if (bridgeToUse) {
-          const frequencyData = bridgeToUse.getFrequencyFrame()
-          const timeData = bridgeToUse.getTimeFrame()
-          const features = extractFeatures(frequencyData, timeData)
-          featureAggregatorRef.current.addSample(features)
-
-          const currentCount = featureAggregatorRef.current.getAggregate().sampleCount
-
-          // 最初の3サンプルは必ずログ
-          if (currentCount <= 3) {
-            console.log(`📊 Sample #${currentCount}:`, features)
-          }
-
-          // 10サンプルごとにログ
-          if (currentCount % 10 === 0) {
-            console.log('📊 Sampling features:', currentCount)
-          }
-        } else {
-          if (intervalCallCount <= 3) {
-            console.warn('⚠️ bridgeToUse is null in interval callback')
-          }
+        // 10サンプルごとにログ
+        if (currentCount % 10 === 0) {
+          console.log('📊 Sampling features:', currentCount)
         }
-      } catch (error) {
-        console.error('❌ Error in sampling interval:', error)
       }
     }, 50) // 20Hz サンプリング
-
-    console.log('✅ Interval registered with ID:', analysisIntervalRef.current)
   }, [enabled, analyserBridge])
 
   // 解析停止 & 結果生成
@@ -223,21 +153,10 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
       console.log('🗣️ Translation:', translation)
 
       result = { intentResult, pandaSound, translation, grainTimeline }
-
-      // 現在の解析結果を設定
-      setCurrentIntentResult(intentResult)
-      setCurrentPandaSound(pandaSound)
-      setCurrentTranslation(translation)
-      setCurrentGrainTimeline(grainTimeline)
     } else {
-      console.warn('⚠️ No samples collected for analysis, generating fallback results')
-      result = createSafeAnalysisResult('fallback')
-
-      // フォールバック結果を設定
-      setCurrentIntentResult(result.intentResult)
-      setCurrentPandaSound(result.pandaSound)
-      setCurrentTranslation(result.translation)
-      setCurrentGrainTimeline(grainTimeline)
+      console.warn('⚠️ No samples collected for analysis')
+      // サンプルなしの場合はnullを返す
+      return null
     }
 
     // 解析結果を永続化
@@ -245,24 +164,18 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
     console.log('✅ Analysis results set successfully')
 
     return result
-  }, [enabled, createSafeAnalysisResult])
+  }, [enabled])
 
   return {
     // State
     analyserBridge,
     isAnalyzing,
     latestAnalysisResult,
-    currentIntentResult,
-    currentPandaSound,
-    currentTranslation,
-    currentGrainTimeline,
 
     // Actions
     initializeAnalyser,
-    clearCurrentResults,
     startAnalysis,
     stopAnalysisAndProcess,
-    createSafeAnalysisResult,
     setIsAnalyzing
   }
 }

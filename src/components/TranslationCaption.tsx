@@ -81,6 +81,7 @@ export default function TranslationCaption({
     }
 
     return clearAllTimeouts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, intentResult, pandaSound, translation, grainTimeline])
 
   // Cleanup on unmount
