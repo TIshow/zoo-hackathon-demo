@@ -226,8 +226,6 @@ export default function Home() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <ChatHistory
           messages={chatHistory.messages}
-          isAnalysisEnabled={isAnalysisEnabled}
-          analyserBridge={audioAnalysis.analyserBridge}
           isAnalyzing={audioAnalysis.isAnalyzing}
         />
       </div>
