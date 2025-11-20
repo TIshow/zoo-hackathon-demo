@@ -37,9 +37,9 @@ export interface UseAudioAnalysisReturn {
   currentGrainTimeline: GrainTimeline[]
 
   // Actions
-  initializeAnalyser: () => Promise<AnalyserBridge | null>
+  initializeAnalyser: (ctx?: AudioContext) => Promise<AnalyserBridge | null>
   clearCurrentResults: () => void
-  startAnalysis: () => void
+  startAnalysis: (bridge?: AnalyserBridge) => void
   stopAnalysisAndProcess: (grainTimeline: GrainTimeline[]) => AnalysisResult | null
   createSafeAnalysisResult: (type?: 'basic' | 'fallback') => AnalysisResult
   setIsAnalyzing: (value: boolean) => void
@@ -65,14 +65,26 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
   const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // AnalyserBridge 初期化
-  const initializeAnalyser = useCallback(async (): Promise<AnalyserBridge | null> => {
-    if (!audioContext || !enabled || analyserBridge) {
+  const initializeAnalyser = useCallback(async (ctx?: AudioContext): Promise<AnalyserBridge | null> => {
+    // 既に存在する場合は返す
+    if (analyserBridge) {
       return analyserBridge
+    }
+
+    if (!enabled) {
+      return null
+    }
+
+    // 引数で渡されたcontextを優先、なければhookのaudioContextを使用
+    const contextToUse = ctx || audioContext
+    if (!contextToUse) {
+      console.warn('⚠️ AudioContext not available for analyser initialization')
+      return null
     }
 
     try {
       console.log('🔬 Creating analyser bridge...')
-      const analyser = createAnalyser(audioContext)
+      const analyser = createAnalyser(contextToUse)
       setAnalyserBridge(analyser)
       console.log('✅ Analyser bridge created successfully')
       return analyser
@@ -117,30 +129,65 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
   }, [])
 
   // 解析開始
-  const startAnalysis = useCallback(() => {
-    if (!enabled || !analyserBridge) {
-      console.log('⚠️ Analysis disabled or analyser not ready')
+  const startAnalysis = useCallback((bridge?: AnalyserBridge) => {
+    // 引数で渡されたbridgeを優先、なければstateのanalyserBridgeを使用
+    const bridgeToUse = bridge || analyserBridge
+
+    if (!enabled || !bridgeToUse) {
+      console.log('⚠️ Analysis disabled or analyser not ready', { enabled, hasBridge: !!bridgeToUse })
       return
     }
 
-    console.log('🎵 Starting analysis-enabled speech synthesis with analyser:', !!analyserBridge)
+    console.log('🎵 Starting analysis-enabled speech synthesis with analyser:', !!bridgeToUse)
     setIsAnalyzing(true)
     featureAggregatorRef.current.clear()
 
+    // 既存のインターバルをクリア
+    if (analysisIntervalRef.current) {
+      clearInterval(analysisIntervalRef.current)
+    }
+
+    console.log('⏱️ Starting sampling interval...')
+
+    let intervalCallCount = 0
+
     // 50ms毎に特徴量をサンプリング
     analysisIntervalRef.current = setInterval(() => {
-      if (analyserBridge) {
-        const frequencyData = analyserBridge.getFrequencyFrame()
-        const timeData = analyserBridge.getTimeFrame()
-        const features = extractFeatures(frequencyData, timeData)
-        featureAggregatorRef.current.addSample(features)
+      intervalCallCount++
 
-        // 10サンプルごとにログ
-        if (featureAggregatorRef.current.getAggregate().sampleCount % 10 === 0) {
-          console.log('📊 Sampling features:', featureAggregatorRef.current.getAggregate().sampleCount)
+      if (intervalCallCount === 1) {
+        console.log('✨ First interval callback executed')
+      }
+
+      try {
+        if (bridgeToUse) {
+          const frequencyData = bridgeToUse.getFrequencyFrame()
+          const timeData = bridgeToUse.getTimeFrame()
+          const features = extractFeatures(frequencyData, timeData)
+          featureAggregatorRef.current.addSample(features)
+
+          const currentCount = featureAggregatorRef.current.getAggregate().sampleCount
+
+          // 最初の3サンプルは必ずログ
+          if (currentCount <= 3) {
+            console.log(`📊 Sample #${currentCount}:`, features)
+          }
+
+          // 10サンプルごとにログ
+          if (currentCount % 10 === 0) {
+            console.log('📊 Sampling features:', currentCount)
+          }
+        } else {
+          if (intervalCallCount <= 3) {
+            console.warn('⚠️ bridgeToUse is null in interval callback')
+          }
         }
+      } catch (error) {
+        console.error('❌ Error in sampling interval:', error)
       }
     }, 50) // 20Hz サンプリング
+
+    console.log('✅ Interval registered with ID:', analysisIntervalRef.current)
   }, [enabled, analyserBridge])
 
   // 解析停止 & 結果生成

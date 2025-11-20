@@ -54,7 +54,6 @@ export default function TranslationCaption({
     if (!isActive || grainTimeline.length === 0) return
 
     clearAllTimeouts()
-    resetCaptions()
 
     // Phase 1: Show panda sound immediately
     setCaptionState(prev => ({ ...prev, pandaVisible: true }))
@@ -67,25 +66,16 @@ export default function TranslationCaption({
 
     timeoutRefs.current.push(translationTimeout)
 
-    // Phase 3: Hide captions after all grains complete
-    const totalDuration = grainTimeline.reduce((max, grain) =>
-      Math.max(max, grain.startTime + grain.duration), 0
-    )
-
-    const hideTimeout = setTimeout(() => {
-      if (isActive) { // Only hide if still active
-        resetCaptions()
-      }
-    }, totalDuration + 1000) // Add 1 second buffer
-
-    timeoutRefs.current.push(hideTimeout)
+    // Phase 3: Keep captions visible after playback completes
+    // (翻訳を表示し続けるため、自動非表示は行わない)
   }
 
   // Effect to start/stop caption sequence
   useEffect(() => {
     if (isActive && intentResult && pandaSound && translation) {
       startCaptionSequence()
-    } else {
+    } else if (!isActive && !intentResult) {
+      // 解析が無効、または新しい会話が始まる前のみクリア
       clearAllTimeouts()
       resetCaptions()
     }

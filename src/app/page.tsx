@@ -58,18 +58,25 @@ export default function Home() {
       speechSynthesis.setIsThinking(false)
       speechSynthesis.setIsSpeaking(true)
 
+      // 解析が有効な場合、analyserBridgeを確保
       let currentAnalyserBridge = audioAnalysis.analyserBridge
-      if (isAnalysisEnabled && speechSynthesis.audioContext && !currentAnalyserBridge) {
-        currentAnalyserBridge = await audioAnalysis.initializeAnalyser()
+      if (isAnalysisEnabled) {
+        // AudioContextを確保（初回のみ初期化）
+        const audioCtx = await speechSynthesis.initializeAudio()
+
+        if (audioCtx && !currentAnalyserBridge) {
+          currentAnalyserBridge = await audioAnalysis.initializeAnalyser(audioCtx)
+        }
+
+        // analyserBridgeが確保できた場合のみ解析開始
+        if (currentAnalyserBridge) {
+          audioAnalysis.startAnalysis(currentAnalyserBridge)
+        }
       }
 
       const reply = speechSynthesis.getReplyForInput(input)
       const baseSpeechParams = speechSynthesis.createSpeechParams(reply.id)
       const adjustedParams = pandaLearning.getAdjustedParams(baseSpeechParams)
-
-      if (isAnalysisEnabled && currentAnalyserBridge) {
-        audioAnalysis.startAnalysis()
-      }
 
       const result = await speechSynthesis.performSpeech({
         input,
@@ -117,27 +124,34 @@ export default function Home() {
         pandaLearning.resetSessionStartTime()
       }
 
-      if (isAnalysisEnabled) {
-        audioAnalysis.stopAnalysisAndProcess(speechResult.grainTimeline)
-        setTimeout(() => {
-          audioAnalysis.setIsAnalyzing(false)
-        }, speechResult.actualDuration * 1000 + 500)
-      }
-
       const finalDuration = speechResult.actualDuration + 0.5
 
+      // 音声再生完了後の処理
       setTimeout(() => {
         speechSynthesis.setIsSpeaking(false)
 
-        if (isUserInput) {
-          const analysisData = isAnalysisEnabled && audioAnalysis.latestAnalysisResult ? {
-            intentResult: audioAnalysis.latestAnalysisResult.intentResult,
-            pandaSound: audioAnalysis.latestAnalysisResult.pandaSound,
-            translation: audioAnalysis.latestAnalysisResult.translation,
-            grainTimeline: audioAnalysis.latestAnalysisResult.grainTimeline
-          } : undefined
+        // 解析が有効な場合、解析を停止して結果を処理
+        if (isAnalysisEnabled) {
+          const analysisResult = audioAnalysis.stopAnalysisAndProcess(speechResult.grainTimeline)
+          audioAnalysis.setIsAnalyzing(false)
 
-          chatHistory.addPandaMessage(actualReply, analysisData)
+          // 解析結果を会話履歴に保存
+          if (isUserInput && analysisResult) {
+            const analysisData = {
+              intentResult: analysisResult.intentResult,
+              pandaSound: analysisResult.pandaSound,
+              translation: analysisResult.translation,
+              grainTimeline: analysisResult.grainTimeline
+            }
+            chatHistory.addPandaMessage(actualReply, analysisData)
+          } else if (isUserInput) {
+            chatHistory.addPandaMessage(actualReply, undefined)
+          }
+        } else {
+          // 解析無効の場合は通常通り保存
+          if (isUserInput) {
+            chatHistory.addPandaMessage(actualReply, undefined)
+          }
         }
       }, finalDuration * 1000)
 
