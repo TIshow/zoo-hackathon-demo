@@ -1,11 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { PandaReply } from '@/data/replies'
-import type { IntentResult, GrainTimeline, AnalyserBridge } from '@/types/audio'
-import dynamic from 'next/dynamic'
-
-// CSR専用コンポーネント
-const SpectrumPanel = dynamic(() => import('@/components/SpectrumPanel'), { ssr: false })
-const TranslationCaption = dynamic(() => import('@/components/TranslationCaption'), { ssr: false })
+import type { IntentResult, GrainTimeline } from '@/types/audio'
 
 interface ChatMessage {
   id: string
@@ -23,15 +18,11 @@ interface ChatMessage {
 
 interface ChatHistoryProps {
   messages: ChatMessage[]
-  isAnalysisEnabled: boolean
-  analyserBridge: AnalyserBridge | null
   isAnalyzing: boolean
 }
 
 export default function ChatHistory({
   messages,
-  isAnalysisEnabled,
-  analyserBridge,
   isAnalyzing
 }: ChatHistoryProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -90,35 +81,6 @@ export default function ChatHistory({
                     </div>
                   </div>
                 </div>
-
-                {/* 解析結果（折りたたみ可能） */}
-                {isAnalysisEnabled && message.analysisData && (
-                  <div className="mt-3 ml-8 space-y-2">
-                    {/* スペクトラム解析 */}
-                    <details className="group">
-                      <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
-                        <span className="text-xs">📊</span>
-                        音声解析結果
-                        <span className="ml-1 group-open:rotate-90 transition-transform">▶</span>
-                      </summary>
-                      <div className="mt-2 bg-gray-50 rounded-xl p-3 border border-gray-200">
-                        <SpectrumPanel
-                          analyserBridge={analyserBridge}
-                          isActive={false}
-                          className="h-20 rounded-lg overflow-hidden mb-2"
-                        />
-                        <TranslationCaption
-                          intentResult={message.analysisData.intentResult}
-                          pandaSound={message.analysisData.pandaSound}
-                          translation={message.analysisData.translation}
-                          grainTimeline={message.analysisData.grainTimeline}
-                          isActive={false}
-                          className="min-h-[60px]"
-                        />
-                      </div>
-                    </details>
-                  </div>
-                )}
               </div>
             </div>
           )}
