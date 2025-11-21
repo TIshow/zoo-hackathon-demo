@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import Image from 'next/image'
 import type { PandaReply } from '@/data/replies'
 import type { IntentResult, GrainTimeline } from '@/types/audio'
 
@@ -36,7 +37,9 @@ export default function ChatHistory({
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
-          <img src="/red-panda.png" alt="レッサーパンダ" className="w-20 h-20 rounded-full object-cover mx-auto border-2 border-orange-300 mb-4" />
+          <div className="w-20 h-20 rounded-full border-2 border-orange-300 overflow-hidden mx-auto mb-4">
+            <Image src="/red-panda.png" alt="レッサーパンダ" width={80} height={80} className="w-full h-full object-cover" />
+          </div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2">
             レッサーパンダと会話しよう！
           </h2>
@@ -71,7 +74,9 @@ export default function ChatHistory({
             <div className="flex justify-start">
               <div className="max-w-xs lg:max-w-md">
                 <div className="flex items-start gap-2">
-                  <img src="/red-panda.png" alt="レッサーパンダ" className="w-8 h-8 rounded-full object-cover border border-orange-300 flex-shrink-0" />
+                  <div className="w-8 h-8 rounded-full border border-orange-300 overflow-hidden flex-shrink-0">
+                    <Image src="/red-panda.png" alt="レッサーパンダ" width={32} height={32} className="w-full h-full object-cover" />
+                  </div>
                   <div className="flex-1">
                     <div className="bg-white border border-gray-200 px-4 py-2 rounded-2xl rounded-tl-sm shadow-sm">
                       {message.reply?.translation || message.content}
@@ -92,7 +97,9 @@ export default function ChatHistory({
         <div className="flex justify-start">
           <div className="max-w-xs lg:max-w-md">
             <div className="flex items-start gap-2">
-              <img src="/red-panda.png" alt="レッサーパンダ" className="w-8 h-8 rounded-full object-cover border border-orange-300 flex-shrink-0" />
+              <div className="w-8 h-8 rounded-full border border-orange-300 overflow-hidden flex-shrink-0">
+                    <Image src="/red-panda.png" alt="レッサーパンダ" width={32} height={32} className="w-full h-full object-cover" />
+                  </div>
               <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm">
                 <div className="flex items-center gap-2">
                   <div className="animate-spin w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full"></div>
