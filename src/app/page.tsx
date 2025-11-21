@@ -212,7 +212,7 @@ export default function Home() {
       <div className="bg-white/80 backdrop-blur-sm border-b border-white/30 p-4 flex-shrink-0">
         <div className="max-w-lg mx-auto text-center">
           <div className="mb-2">
-            <span className="text-4xl">🐼</span>
+            <img src="/red-panda.png" alt="レッサーパンダ" className="w-12 h-12 rounded-full object-cover mx-auto border-2 border-orange-300" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-500 bg-clip-text text-transparent mb-2">
             しゃべれっさー！
