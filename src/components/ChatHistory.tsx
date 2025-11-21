@@ -40,10 +40,10 @@ export default function ChatHistory({
           <div className="w-20 h-20 rounded-full border-2 border-orange-300 overflow-hidden mx-auto mb-4">
             <Image src="/red-panda.png" alt="レッサーパンダ" width={80} height={80} className="w-full h-full object-cover" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+          <h2 className="text-heading text-gray-700 mb-2">
             レッサーパンダと会話しよう！
           </h2>
-          <p className="text-gray-500 text-sm">
+          <p className="text-caption">
             下のメッセージ欄から話しかけてみてね
           </p>
         </div>
@@ -62,7 +62,7 @@ export default function ChatHistory({
                 <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-2xl rounded-tr-sm">
                   {message.content}
                 </div>
-                <div className="text-xs text-gray-400 text-right mt-1">
+                <div className="text-caption text-gray-400 text-right mt-1">
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
@@ -81,7 +81,7 @@ export default function ChatHistory({
                     <div className="bg-white border border-gray-200 px-4 py-2 rounded-2xl rounded-tl-sm shadow-sm">
                       {message.reply?.translation || message.content}
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">
+                    <div className="text-caption text-gray-400 mt-1">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
@@ -103,7 +103,7 @@ export default function ChatHistory({
               <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm">
                 <div className="flex items-center gap-2">
                   <div className="animate-spin w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full"></div>
-                  <span className="text-sm text-gray-600">解析中...</span>
+                  <span className="text-body text-gray-600">解析中...</span>
                 </div>
               </div>
             </div>

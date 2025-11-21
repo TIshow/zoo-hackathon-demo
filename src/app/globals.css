@@ -23,3 +23,28 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Typography Scale - Consistent hierarchy */
+.text-heading-lg {
+  @apply text-2xl font-bold;
+}
+
+.text-heading {
+  @apply text-xl font-semibold;
+}
+
+.text-heading-sm {
+  @apply text-sm font-medium;
+}
+
+.text-body {
+  @apply text-sm font-normal;
+}
+
+.text-body-sm {
+  @apply text-xs font-normal;
+}
+
+.text-caption {
+  @apply text-xs text-gray-500;
+}

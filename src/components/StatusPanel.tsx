@@ -83,11 +83,11 @@ export default function StatusPanel({
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xl">🔬</span>
-                    <span className="font-medium text-gray-800 text-sm">
+                    <span className="text-heading-sm text-gray-800">
                       AI音声解析＆翻訳
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">
+                  <p className="text-body-sm text-gray-600 leading-relaxed">
                     パンダの鳴き声をリアルタイム解析
                   </p>
                 </div>
@@ -111,7 +111,7 @@ export default function StatusPanel({
             {isAnalysisEnabled && (
               <div className="border-b border-gray-200 pb-4">
                 <div className="mb-2">
-                  <h3 className="font-medium text-gray-800 flex items-center gap-2 text-sm">
+                  <h3 className="text-heading-sm text-gray-800 flex items-center gap-2">
                     <span className="text-lg">🗣️</span>
                     AI翻訳
                   </h3>
@@ -127,7 +127,7 @@ export default function StatusPanel({
                     className="min-h-[60px] text-xs"
                   />
                 ) : (
-                  <div className="min-h-[60px] flex items-center justify-center text-gray-500 text-xs border border-gray-200 rounded">
+                  <div className="min-h-[60px] flex items-center justify-center text-caption border border-gray-200 rounded">
                     {isAnalyzing ? '解析中...' : '音声発話で解析結果が表示されます'}
                   </div>
                 )}
@@ -138,12 +138,12 @@ export default function StatusPanel({
             {isClientMounted && pandaMemory.totalConversations > 0 && (
               <div>
                 <div className="mb-2">
-                  <h3 className="font-medium text-gray-800 flex items-center gap-2 text-sm">
+                  <h3 className="text-heading-sm text-gray-800 flex items-center gap-2">
                     <span className="text-lg">🧠</span>
                     学習状況
                   </h3>
                 </div>
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2 text-body-sm">
                   <div className="flex items-center gap-2 text-gray-700">
                     <span className="w-5 text-center">🎨</span>
                     <span>スタイル: <span className="font-medium">{pandaMemory.preferredResponseStyle}</span></span>
