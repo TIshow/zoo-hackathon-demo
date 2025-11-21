@@ -251,7 +251,6 @@ export default function Home() {
         onShareCard={handleShareCard}
         isClientMounted={isClientMounted}
         getMilestoneTitle={getMilestoneTitle}
-        analyserBridge={audioAnalysis.analyserBridge}
         latestAnalysisResult={audioAnalysis.latestAnalysisResult}
         isAnalyzing={audioAnalysis.isAnalyzing}
       />

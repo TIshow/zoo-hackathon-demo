@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import IntimacyGauge from '@/components/IntimacyGauge'
 import type { PandaMemory } from '@/lib/pandaLearning'
-import type { AnalyserBridge, IntentResult, GrainTimeline } from '@/types/audio'
+import type { IntentResult, GrainTimeline } from '@/types/audio'
 import dynamic from 'next/dynamic'
 
 // CSR専用コンポーネント
-const SpectrumPanel = dynamic(() => import('@/components/SpectrumPanel'), { ssr: false })
 const TranslationCaption = dynamic(() => import('@/components/TranslationCaption'), { ssr: false })
 
 interface StatusPanelProps {
@@ -18,7 +17,6 @@ interface StatusPanelProps {
   onShareCard: () => void
   isClientMounted: boolean
   getMilestoneTitle: (id: string) => string
-  analyserBridge: AnalyserBridge | null
   latestAnalysisResult: {
     intentResult: IntentResult | null
     pandaSound: string
@@ -38,7 +36,6 @@ export default function StatusPanel({
   onShareCard,
   isClientMounted,
   getMilestoneTitle,
-  analyserBridge,
   latestAnalysisResult,
   isAnalyzing
 }: StatusPanelProps) {
@@ -110,44 +107,30 @@ export default function StatusPanel({
               />
             </div>
 
-            {/* 音声解析結果表示 */}
+            {/* AI翻訳結果表示 */}
             {isAnalysisEnabled && (
               <div className="border-b border-gray-200 pb-4">
                 <div className="mb-2">
                   <h3 className="font-medium text-gray-800 flex items-center gap-2 text-sm">
-                    <span className="text-lg">📊</span>
-                    音声解析結果
+                    <span className="text-lg">🗣️</span>
+                    AI翻訳
                   </h3>
                 </div>
 
-                {/* スペクトラム */}
-                <div className="mb-3">
-                  <div className="text-xs text-gray-600 mb-1">スペクトラム</div>
-                  <SpectrumPanel
-                    analyserBridge={analyserBridge}
+                {latestAnalysisResult ? (
+                  <TranslationCaption
+                    intentResult={latestAnalysisResult.intentResult}
+                    pandaSound={latestAnalysisResult.pandaSound}
+                    translation={latestAnalysisResult.translation}
+                    grainTimeline={latestAnalysisResult.grainTimeline}
                     isActive={isAnalyzing}
-                    className="h-24 rounded-lg overflow-hidden"
+                    className="min-h-[60px] text-xs"
                   />
-                </div>
-
-                {/* AI翻訳結果 */}
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">AI翻訳</div>
-                  {latestAnalysisResult ? (
-                    <TranslationCaption
-                      intentResult={latestAnalysisResult.intentResult}
-                      pandaSound={latestAnalysisResult.pandaSound}
-                      translation={latestAnalysisResult.translation}
-                      grainTimeline={latestAnalysisResult.grainTimeline}
-                      isActive={isAnalyzing}
-                      className="min-h-[60px] text-xs"
-                    />
-                  ) : (
-                    <div className="min-h-[60px] flex items-center justify-center text-gray-500 text-xs border border-gray-200 rounded">
-                      {isAnalyzing ? '解析中...' : '音声発話で解析結果が表示されます'}
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div className="min-h-[60px] flex items-center justify-center text-gray-500 text-xs border border-gray-200 rounded">
+                    {isAnalyzing ? '解析中...' : '音声発話で解析結果が表示されます'}
+                  </div>
+                )}
               </div>
             )}
 
