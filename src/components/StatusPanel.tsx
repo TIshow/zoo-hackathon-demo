@@ -126,7 +126,7 @@ export default function StatusPanel({
                   <SpectrumPanel
                     analyserBridge={analyserBridge}
                     isActive={isAnalyzing}
-                    className="h-16 rounded-lg overflow-hidden"
+                    className="h-24 rounded-lg overflow-hidden"
                   />
                 </div>
 
