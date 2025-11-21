@@ -56,8 +56,8 @@ export default function StatusPanel({
 
       {/* 展開パネル */}
       {isExpanded && (
-        <div className="mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden">
-          <div className="p-4 space-y-4">
+        <div className="mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-10rem)] bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden flex flex-col">
+          <div className="p-4 space-y-4 overflow-y-auto flex-1">
             {/* AI解析機能の切り替え */}
             <div className="border-b border-gray-200 pb-4">
               <label className="flex items-start space-x-3 cursor-pointer group">
