@@ -74,13 +74,11 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
     }
 
     try {
-      console.log('🔊 Initializing AudioContext...')
       const context = await initializeAudioContext()
       audioContextRef.current = context
-      console.log('✅ AudioContext initialized successfully')
       return context
     } catch (error) {
-      console.error('❌ Failed to initialize AudioContext:', error)
+      console.error('Failed to initialize AudioContext:', error)
       return null
     }
   }, [enabled])
@@ -108,12 +106,6 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
 
     const { input, adjustedParams, analyserBridge, isAnalysisEnabled } = request
 
-    console.log('🎵 Performing speech synthesis:', {
-      input,
-      hasAnalyserBridge: !!analyserBridge,
-      isAnalysisEnabled
-    })
-
     try {
       // AudioContext を確保
       const context = await initializeAudio()
@@ -128,7 +120,6 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
       let speechResult: SpeechAnalysisResult
 
       if (isAnalysisEnabled && analyserBridge) {
-        console.log('🎤 Using analysis-enabled speech synthesis')
         speechResult = await speakLikePandaWithAnalysis(
           context,
           reply.src,
@@ -136,7 +127,6 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
           analyserBridge
         )
       } else {
-        console.log('🔊 Using traditional speech synthesis')
         const duration = await speakLikePanda(context, reply.src, adjustedParams)
         speechResult = {
           actualDuration: duration,
@@ -144,14 +134,9 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
         }
       }
 
-      console.log('✅ Speech synthesis completed:', {
-        duration: speechResult.actualDuration,
-        grainCount: speechResult.grainTimeline.length
-      })
-
       return { reply, speechResult }
     } catch (error) {
-      console.error('❌ Speech synthesis failed:', error)
+      console.error('Speech synthesis failed:', error)
       throw error
     }
   }, [enabled, initializeAudio, getReplyForInput])

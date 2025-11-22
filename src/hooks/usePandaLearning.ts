@@ -96,7 +96,6 @@ export function usePandaLearning(config: UsePandaLearningConfig): UsePandaLearni
       return
     }
 
-    console.log('🧠 Initializing panda memory from localStorage...')
     const actualMemory = loadPandaMemory()
     setPandaMemory(actualMemory)
 
@@ -104,12 +103,6 @@ export function usePandaLearning(config: UsePandaLearningConfig): UsePandaLearni
     if (!sessionStartTime) {
       setSessionStartTime(new Date())
     }
-
-    console.log('✅ Panda memory initialized:', {
-      intimacyLevel: actualMemory.intimacyLevel,
-      totalConversations: actualMemory.totalConversations,
-      preferredStyle: actualMemory.preferredResponseStyle
-    })
   }, [sessionStartTime])
 
   // セッション開始時刻をリセット
@@ -130,11 +123,6 @@ export function usePandaLearning(config: UsePandaLearningConfig): UsePandaLearni
         newUnlocks: []
       }
     }
-
-    console.log('📝 Recording conversation:', {
-      userInput: input.userInput,
-      sessionDuration: input.sessionDuration
-    })
 
     const previousIntimacy = pandaMemory.intimacyLevel
     const previousUnlocks = [...pandaMemory.specialUnlocks]
@@ -158,17 +146,6 @@ export function usePandaLearning(config: UsePandaLearningConfig): UsePandaLearni
     const newUnlocksList = updatedMemory.specialUnlocks.filter(
       unlock => !previousUnlocks.includes(unlock)
     )
-
-    if (intimacyIncreased) {
-      console.log('💖 Intimacy increased:', {
-        from: previousIntimacy,
-        to: updatedMemory.intimacyLevel
-      })
-    }
-
-    if (newUnlocksList.length > 0) {
-      console.log('🎉 New unlocks:', newUnlocksList)
-    }
 
     return {
       updatedMemory,
