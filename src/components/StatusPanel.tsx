@@ -46,7 +46,7 @@ export default function StatusPanel({
       {/* トグルボタン */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="bg-white/90 backdrop-blur-sm shadow-lg rounded-full w-12 h-12 flex items-center justify-center border border-white/30 hover:bg-white transition-all duration-200 hover:scale-110 active:scale-95"
+        className="bg-white/90 backdrop-blur-sm shadow-lg rounded-full w-12 h-12 flex items-center justify-center border border-white/30 hover:bg-white transition-all duration-200 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
         aria-label="ステータスパネルを開く"
       >
         <span className="text-xl">

@@ -72,7 +72,7 @@ export default function FixedInputArea({
                   <button
                     type="button"
                     onClick={() => setShowQuickChips(true)}
-                    className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-all duration-200 hover:scale-[1.05] active:scale-[0.95]"
+                    className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-all duration-200 hover:scale-[1.05] active:scale-[0.95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
                     aria-label="よく使う質問を表示"
                   >
                     💡

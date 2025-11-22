@@ -168,3 +168,31 @@ body {
 .inline-gap {
   @apply gap-2;
 }
+
+/* Accessibility - Focus states */
+.focus-visible-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2;
+}
+
+/* Ensure minimum touch target size (44x44px) */
+.touch-target {
+  @apply min-w-[44px] min-h-[44px];
+}
+
+/* High contrast text for better readability */
+.text-high-contrast {
+  @apply text-gray-900;
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
