@@ -66,18 +66,15 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
     // 引数で渡されたcontextを優先、なければhookのaudioContextを使用
     const contextToUse = ctx || audioContext
     if (!contextToUse) {
-      console.warn('⚠️ AudioContext not available for analyser initialization')
       return null
     }
 
     try {
-      console.log('🔬 Creating analyser bridge...')
       const analyser = createAnalyser(contextToUse)
       setAnalyserBridge(analyser)
-      console.log('✅ Analyser bridge created successfully')
       return analyser
     } catch (error) {
-      console.error('❌ Failed to create analyser:', error)
+      console.error('Failed to create analyser:', error)
       return null
     }
   }, [audioContext, enabled, analyserBridge])
@@ -89,11 +86,9 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
     const bridgeToUse = bridge || analyserBridge
 
     if (!enabled || !bridgeToUse) {
-      console.log('⚠️ Analysis disabled or analyser not ready', { enabled, hasBridge: !!bridgeToUse })
       return
     }
 
-    console.log('🎵 Starting analysis-enabled speech synthesis with analyser:', !!bridgeToUse)
     setIsAnalyzing(true)
     featureAggregatorRef.current.clear()
 
@@ -110,12 +105,6 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
         const features = extractFeatures(frequencyData, timeData)
         featureAggregatorRef.current.addSample(features)
 
-        const currentCount = featureAggregatorRef.current.getAggregate().sampleCount
-
-        // 10サンプルごとにログ
-        if (currentCount % 10 === 0) {
-          console.log('📊 Sampling features:', currentCount)
-        }
       }
     }, 50) // 20Hz サンプリング
   }, [enabled, analyserBridge])
@@ -126,11 +115,6 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
       return null
     }
 
-    console.log('🔍 Processing analysis results...', {
-      hasInterval: !!analysisIntervalRef.current,
-      isEnabled: enabled
-    })
-
     // サンプリング停止
     if (analysisIntervalRef.current) {
       clearInterval(analysisIntervalRef.current)
@@ -139,29 +123,17 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
 
     // 特徴量集計と分類
     const aggregate = featureAggregatorRef.current.getAggregate()
-    console.log('📊 Feature aggregate:', aggregate)
 
-    let result: AnalysisResult
-
-    if (aggregate.sampleCount > 0) {
-      const intentResult = intentClassifierRef.current.classify(aggregate)
-      const pandaSound = intentClassifierRef.current.getRandomPandaSound(intentResult.intent)
-      const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
-
-      console.log('🎯 Classification result:', { intent: intentResult.intent, confidence: intentResult.confidence })
-      console.log('🐼 Panda sound:', pandaSound)
-      console.log('🗣️ Translation:', translation)
-
-      result = { intentResult, pandaSound, translation, grainTimeline }
-    } else {
-      console.warn('⚠️ No samples collected for analysis')
-      // サンプルなしの場合はnullを返す
+    if (aggregate.sampleCount === 0) {
       return null
     }
 
-    // 解析結果を永続化
+    const intentResult = intentClassifierRef.current.classify(aggregate)
+    const pandaSound = intentClassifierRef.current.getRandomPandaSound(intentResult.intent)
+    const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
+
+    const result: AnalysisResult = { intentResult, pandaSound, translation, grainTimeline }
     setLatestAnalysisResult(result)
-    console.log('✅ Analysis results set successfully')
 
     return result
   }, [enabled])

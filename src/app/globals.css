@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Brand Color Palette */
+:root {
+  /* Primary - Orange/Red gradient */
+  --color-primary-50: #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-500: #f97316;
+  --color-primary-600: #ea580c;
+  --color-primary-700: #c2410c;
+
+  /* Accent - Red */
+  --color-accent-500: #ef4444;
+  --color-accent-600: #dc2626;
+
+  /* Border */
+  --color-border-light: #fed7aa;
+  --color-border-default: #fdba74;
+}
+
 /* Custom animations and utilities */
 @keyframes slide-in-from-bottom {
   from {
@@ -22,4 +40,159 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Scale - Consistent hierarchy */
+.text-heading-lg {
+  @apply text-2xl font-bold;
+}
+
+.text-heading {
+  @apply text-xl font-semibold;
+}
+
+.text-heading-sm {
+  @apply text-sm font-medium;
+}
+
+.text-body {
+  @apply text-sm font-normal;
+}
+
+.text-body-sm {
+  @apply text-xs font-normal;
+}
+
+.text-caption {
+  @apply text-xs text-gray-500;
+}
+
+/* Animation utilities */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Button hover transitions */
+.btn-hover {
+  @apply transition-all duration-200 hover:scale-[1.02] active:scale-[0.98];
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-shadow duration-200 hover:shadow-lg;
+}
+
+/* Brand gradient utilities */
+.bg-brand-gradient {
+  background: linear-gradient(to right, var(--color-primary-500), var(--color-accent-500));
+}
+
+.bg-brand-gradient-hover:hover {
+  background: linear-gradient(to right, var(--color-primary-600), var(--color-accent-600));
+}
+
+.text-brand-gradient {
+  background: linear-gradient(to right, var(--color-primary-600), var(--color-accent-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.border-brand {
+  border-color: var(--color-border-light);
+}
+
+/* Spacing Scale (4px base unit) */
+:root {
+  --space-xs: 0.25rem;  /* 4px */
+  --space-sm: 0.5rem;   /* 8px */
+  --space-md: 1rem;     /* 16px */
+  --space-lg: 1.5rem;   /* 24px */
+  --space-xl: 2rem;     /* 32px */
+}
+
+/* Section spacing */
+.section-padding {
+  @apply p-4;
+}
+
+.section-gap {
+  @apply space-y-4;
+}
+
+/* Inline element spacing */
+.inline-gap {
+  @apply gap-2;
+}
+
+/* Accessibility - Focus states */
+.focus-visible-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2;
+}
+
+/* Ensure minimum touch target size (44x44px) */
+.touch-target {
+  @apply min-w-[44px] min-h-[44px];
+}
+
+/* High contrast text for better readability */
+.text-high-contrast {
+  @apply text-gray-900;
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

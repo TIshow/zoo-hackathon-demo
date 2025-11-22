@@ -56,8 +56,6 @@ export function useChatHistory(): UseChatHistoryReturn {
     }
 
     setMessages(prev => [...prev, newMessage])
-    console.log('💬 User message added:', { id: messageId, content })
-
     return messageId
   }, [])
 
@@ -74,17 +72,11 @@ export function useChatHistory(): UseChatHistoryReturn {
     }
 
     setMessages(prev => [...prev, newMessage])
-    console.log('🐼 Panda message added:', {
-      id: messageId,
-      reply: reply.translation,
-      hasAnalysis: !!analysisData
-    })
   }, [])
 
   // 履歴をクリア
   const clearHistory = useCallback(() => {
     setMessages([])
-    console.log('🗑️ Chat history cleared')
   }, [])
 
   return {
