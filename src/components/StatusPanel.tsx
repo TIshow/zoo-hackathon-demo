@@ -46,7 +46,7 @@ export default function StatusPanel({
       {/* トグルボタン */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="bg-white/90 backdrop-blur-sm shadow-lg rounded-full w-12 h-12 flex items-center justify-center border border-white/30 hover:bg-white transition-all duration-200"
+        className="bg-white/90 backdrop-blur-sm shadow-lg rounded-full w-12 h-12 flex items-center justify-center border border-white/30 hover:bg-white transition-all duration-200 hover:scale-110 active:scale-95"
         aria-label="ステータスパネルを開く"
       >
         <span className="text-xl">
@@ -56,7 +56,7 @@ export default function StatusPanel({
 
       {/* 展開パネル */}
       {isExpanded && (
-        <div className="mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-10rem)] bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden flex flex-col">
+        <div className="mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-10rem)] bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden flex flex-col animate-scale-in">
           <div className="p-4 space-y-4 overflow-y-auto flex-1">
             {/* AI解析機能の切り替え */}
             <div className="border-b border-gray-200 pb-4">

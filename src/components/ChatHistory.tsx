@@ -54,7 +54,7 @@ export default function ChatHistory({
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {messages.map((message) => (
-        <div key={message.id} className="space-y-3">
+        <div key={message.id} className="space-y-3 animate-fade-in-up">
           {/* ユーザーメッセージ */}
           {message.type === 'user' && (
             <div className="flex justify-end">
@@ -102,7 +102,7 @@ export default function ChatHistory({
                   </div>
               <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm">
                 <div className="flex items-center gap-2">
-                  <div className="animate-spin w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full"></div>
+                  <div className="w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin"></div>
                   <span className="text-body text-gray-600">解析中...</span>
                 </div>
               </div>
