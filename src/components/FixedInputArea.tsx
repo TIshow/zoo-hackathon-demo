@@ -61,7 +61,7 @@ export default function FixedInputArea({
                 <button
                   type="submit"
                   disabled={!userInput.trim() || isDisabled}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:scale-100 focus:ring-2 focus:ring-orange-400 focus:outline-none font-medium"
+                  className="flex-1 bg-brand-gradient bg-brand-gradient-hover text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:scale-100 focus:ring-2 focus:ring-orange-400 focus:outline-none font-medium"
                   aria-label="メッセージを送信してレッサーパンダに話しかける"
                 >
                   {isThinking ? '🤔 考え中...' : isSpeaking ? '🗣️ 鳴いています...' : '💬 話しかける'}

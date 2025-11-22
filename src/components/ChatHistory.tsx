@@ -59,7 +59,7 @@ export default function ChatHistory({
           {message.type === 'user' && (
             <div className="flex justify-end">
               <div className="max-w-xs lg:max-w-md">
-                <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-2xl rounded-tr-sm">
+                <div className="bg-brand-gradient text-white px-4 py-2 rounded-2xl rounded-tr-sm">
                   {message.content}
                 </div>
                 <div className="text-caption text-gray-400 text-right mt-1">

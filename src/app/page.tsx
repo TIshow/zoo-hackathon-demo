@@ -217,7 +217,7 @@ export default function Home() {
               <Image src="/red-panda.png" alt="レッサーパンダ" width={48} height={48} className="w-full h-full object-cover" />
             </div>
           </div>
-          <h1 className="text-heading-lg bg-gradient-to-r from-orange-600 to-red-500 bg-clip-text text-transparent mb-2">
+          <h1 className="text-heading-lg text-brand-gradient mb-2">
             しゃべれっさー！
           </h1>
           <p className="text-body text-gray-600">

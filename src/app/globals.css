@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Brand Color Palette */
+:root {
+  /* Primary - Orange/Red gradient */
+  --color-primary-50: #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-500: #f97316;
+  --color-primary-600: #ea580c;
+  --color-primary-700: #c2410c;
+
+  /* Accent - Red */
+  --color-accent-500: #ef4444;
+  --color-accent-600: #dc2626;
+
+  /* Border */
+  --color-border-light: #fed7aa;
+  --color-border-default: #fdba74;
+}
+
 /* Custom animations and utilities */
 @keyframes slide-in-from-bottom {
   from {
@@ -106,4 +124,24 @@ body {
 /* Card hover effect */
 .card-hover {
   @apply transition-shadow duration-200 hover:shadow-lg;
+}
+
+/* Brand gradient utilities */
+.bg-brand-gradient {
+  background: linear-gradient(to right, var(--color-primary-500), var(--color-accent-500));
+}
+
+.bg-brand-gradient-hover:hover {
+  background: linear-gradient(to right, var(--color-primary-600), var(--color-accent-600));
+}
+
+.text-brand-gradient {
+  background: linear-gradient(to right, var(--color-primary-600), var(--color-accent-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.border-brand {
+  border-color: var(--color-border-light);
 }
