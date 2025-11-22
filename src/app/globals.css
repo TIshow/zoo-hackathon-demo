@@ -145,3 +145,26 @@ body {
 .border-brand {
   border-color: var(--color-border-light);
 }
+
+/* Spacing Scale (4px base unit) */
+:root {
+  --space-xs: 0.25rem;  /* 4px */
+  --space-sm: 0.5rem;   /* 8px */
+  --space-md: 1rem;     /* 16px */
+  --space-lg: 1.5rem;   /* 24px */
+  --space-xl: 2rem;     /* 32px */
+}
+
+/* Section spacing */
+.section-padding {
+  @apply p-4;
+}
+
+.section-gap {
+  @apply space-y-4;
+}
+
+/* Inline element spacing */
+.inline-gap {
+  @apply gap-2;
+}
