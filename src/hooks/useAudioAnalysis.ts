@@ -52,6 +52,10 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
   const intentClassifierRef = useRef<IntentClassifier>(new IntentClassifier())
   const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Ref to store latest setLatestAnalysisResult to avoid closure issues
+  const setLatestAnalysisResultRef = useRef(setLatestAnalysisResult)
+  setLatestAnalysisResultRef.current = setLatestAnalysisResult
+
   // AnalyserBridge 初期化
   const initializeAnalyser = useCallback(async (ctx?: AudioContext): Promise<AnalyserBridge | null> => {
     // 既に存在する場合は返す
@@ -111,10 +115,6 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
 
   // 解析停止 & 結果生成
   const stopAnalysisAndProcess = useCallback((grainTimeline: GrainTimeline[]): AnalysisResult | null => {
-    if (!enabled) {
-      return null
-    }
-
     // サンプリング停止
     if (analysisIntervalRef.current) {
       clearInterval(analysisIntervalRef.current)
@@ -133,10 +133,11 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
     const translation = intentClassifierRef.current.getRandomTranslation(intentResult.intent)
 
     const result: AnalysisResult = { intentResult, pandaSound, translation, grainTimeline }
-    setLatestAnalysisResult(result)
+    // Use ref to avoid closure issues
+    setLatestAnalysisResultRef.current(result)
 
     return result
-  }, [enabled])
+  }, [])
 
   return {
     // State

@@ -112,17 +112,23 @@ export default function Home() {
 
       const finalDuration = speechResult.actualDuration + 0.5
 
+      // 必要な関数を先に取得（クロージャー問題を回避）
+      const stopAnalysis = audioAnalysis.stopAnalysisAndProcess
+      const setAnalyzing = audioAnalysis.setIsAnalyzing
+      const setSpeaking = speechSynthesis.setIsSpeaking
+      const addMessage = chatHistory.addPandaMessage
+
       // 音声再生完了後の処理
       setTimeout(() => {
-        speechSynthesis.setIsSpeaking(false)
+        setSpeaking(false)
 
         // 解析を停止して結果を処理
-        const analysisResult = audioAnalysis.stopAnalysisAndProcess(speechResult.grainTimeline)
-        audioAnalysis.setIsAnalyzing(false)
+        const analysisResult = stopAnalysis(speechResult.grainTimeline)
+        setAnalyzing(false)
 
         // 解析結果を会話履歴に保存
         if (isUserInput) {
-          chatHistory.addPandaMessage(analysisResult || undefined)
+          addMessage(analysisResult || undefined)
         }
       }, finalDuration * 1000)
 
