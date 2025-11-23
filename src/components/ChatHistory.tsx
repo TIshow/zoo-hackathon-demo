@@ -1,21 +1,6 @@
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
-import type { PandaReply } from '@/data/replies'
-import type { IntentResult, GrainTimeline } from '@/types/audio'
-
-interface ChatMessage {
-  id: string
-  type: 'user' | 'panda'
-  content: string
-  timestamp: Date
-  reply?: PandaReply
-  analysisData?: {
-    intentResult: IntentResult | null
-    pandaSound: string
-    translation: string
-    grainTimeline: GrainTimeline[]
-  }
-}
+import type { ChatMessage } from '@/hooks/useChatHistory'
 
 interface ChatHistoryProps {
   messages: ChatMessage[]
@@ -79,7 +64,7 @@ export default function ChatHistory({
                   </div>
                   <div className="flex-1">
                     <div className="bg-white border border-gray-200 px-4 py-2 rounded-2xl rounded-tl-sm shadow-sm">
-                      {message.reply?.translation || message.content}
+                      {message.analysisData?.translation || message.content}
                     </div>
                     <div className="text-caption text-gray-400 mt-1">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -115,5 +100,3 @@ export default function ChatHistory({
     </div>
   )
 }
-
-export type { ChatMessage }

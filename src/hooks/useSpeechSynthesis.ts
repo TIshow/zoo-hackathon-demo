@@ -25,7 +25,6 @@ export interface SpeechRequest {
   isUserInput: boolean
   adjustedParams: SpeechParams
   analyserBridge: AnalyserBridge | null
-  isAnalysisEnabled: boolean
 }
 
 export interface SpeechResult {
@@ -83,9 +82,9 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
     }
   }, [enabled])
 
-  // 入力に対する返答を選択
-  const getReplyForInput = useCallback((input: string): PandaReply => {
-    return selectPandaReply(input)
+  // 音声ファイルをランダム選択
+  const getReplyForInput = useCallback((): PandaReply => {
+    return selectPandaReply()
   }, [])
 
   // 返答IDから意図を判定してスピーチパラメータを生成
@@ -104,7 +103,7 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
       return null
     }
 
-    const { input, adjustedParams, analyserBridge, isAnalysisEnabled } = request
+    const { adjustedParams, analyserBridge } = request
 
     try {
       // AudioContext を確保
@@ -113,26 +112,13 @@ export function useSpeechSynthesis(config: UseSpeechSynthesisConfig): UseSpeechS
         throw new Error('AudioContext not available')
       }
 
-      // 返答を選択
-      const reply = getReplyForInput(input)
+      // 音声ファイルを選択
+      const reply = getReplyForInput()
 
-      // 音声再生
-      let speechResult: SpeechAnalysisResult
-
-      if (isAnalysisEnabled && analyserBridge) {
-        speechResult = await speakLikePandaWithAnalysis(
-          context,
-          reply.src,
-          adjustedParams,
-          analyserBridge
-        )
-      } else {
-        const duration = await speakLikePanda(context, reply.src, adjustedParams)
-        speechResult = {
-          actualDuration: duration,
-          grainTimeline: []
-        }
-      }
+      // 音声再生（常にanalyserBridgeを使用）
+      const speechResult = analyserBridge
+        ? await speakLikePandaWithAnalysis(context, reply.src, adjustedParams, analyserBridge)
+        : { actualDuration: await speakLikePanda(context, reply.src, adjustedParams), grainTimeline: [] }
 
       return { reply, speechResult }
     } catch (error) {
