@@ -15,8 +15,6 @@ import StatusPanel from '@/components/StatusPanel'
 export default function Home() {
   const [userInput, setUserInput] = useState('')
   const [isClientMounted, setIsClientMounted] = useState(false)
-  // 音声解析機能
-  const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
   // Custom Hooks
   const chatHistory = useChatHistory()
   const speechSynthesis = useSpeechSynthesis({
@@ -24,7 +22,7 @@ export default function Home() {
   })
   const audioAnalysis = useAudioAnalysis({
     audioContext: speechSynthesis.audioContext,
-    enabled: isAnalysisEnabled
+    enabled: true
   })
   const pandaLearning = usePandaLearning({
     enabled: true
@@ -55,20 +53,17 @@ export default function Home() {
       speechSynthesis.setIsThinking(false)
       speechSynthesis.setIsSpeaking(true)
 
-      // 解析が有効な場合、analyserBridgeを確保
+      // analyserBridgeを確保
       let currentAnalyserBridge = audioAnalysis.analyserBridge
-      if (isAnalysisEnabled) {
-        // AudioContextを確保（初回のみ初期化）
-        const audioCtx = await speechSynthesis.initializeAudio()
+      const audioCtx = await speechSynthesis.initializeAudio()
 
-        if (audioCtx && !currentAnalyserBridge) {
-          currentAnalyserBridge = await audioAnalysis.initializeAnalyser(audioCtx)
-        }
+      if (audioCtx && !currentAnalyserBridge) {
+        currentAnalyserBridge = await audioAnalysis.initializeAnalyser(audioCtx)
+      }
 
-        // analyserBridgeが確保できた場合のみ解析開始
-        if (currentAnalyserBridge) {
-          audioAnalysis.startAnalysis(currentAnalyserBridge)
-        }
+      // analyserBridgeが確保できた場合のみ解析開始
+      if (currentAnalyserBridge) {
+        audioAnalysis.startAnalysis(currentAnalyserBridge)
       }
 
       const reply = speechSynthesis.getReplyForInput(input)
@@ -79,8 +74,7 @@ export default function Home() {
         input,
         isUserInput,
         adjustedParams,
-        analyserBridge: currentAnalyserBridge,
-        isAnalysisEnabled
+        analyserBridge: currentAnalyserBridge
       })
 
       if (!result) {
@@ -122,28 +116,21 @@ export default function Home() {
       setTimeout(() => {
         speechSynthesis.setIsSpeaking(false)
 
-        // 解析が有効な場合、解析を停止して結果を処理
-        if (isAnalysisEnabled) {
-          const analysisResult = audioAnalysis.stopAnalysisAndProcess(speechResult.grainTimeline)
-          audioAnalysis.setIsAnalyzing(false)
+        // 解析を停止して結果を処理
+        const analysisResult = audioAnalysis.stopAnalysisAndProcess(speechResult.grainTimeline)
+        audioAnalysis.setIsAnalyzing(false)
 
-          // 解析結果を会話履歴に保存
-          if (isUserInput && analysisResult) {
-            const analysisData = {
-              intentResult: analysisResult.intentResult,
-              pandaSound: analysisResult.pandaSound,
-              translation: analysisResult.translation,
-              grainTimeline: analysisResult.grainTimeline
-            }
-            chatHistory.addPandaMessage(actualReply, analysisData)
-          } else if (isUserInput) {
-            chatHistory.addPandaMessage(actualReply, undefined)
+        // 解析結果を会話履歴に保存
+        if (isUserInput && analysisResult) {
+          const analysisData = {
+            intentResult: analysisResult.intentResult,
+            pandaSound: analysisResult.pandaSound,
+            translation: analysisResult.translation,
+            grainTimeline: analysisResult.grainTimeline
           }
-        } else {
-          // 解析無効の場合は通常通り保存
-          if (isUserInput) {
-            chatHistory.addPandaMessage(actualReply, undefined)
-          }
+          chatHistory.addPandaMessage(actualReply, analysisData)
+        } else if (isUserInput) {
+          chatHistory.addPandaMessage(actualReply, undefined)
         }
       }, finalDuration * 1000)
 
@@ -151,7 +138,7 @@ export default function Home() {
       console.error('Speech synthesis failed:', error)
       speechSynthesis.setIsSpeaking(false)
     }
-  }, [speechSynthesis, pandaLearning, isAnalysisEnabled, audioAnalysis, chatHistory])
+  }, [speechSynthesis, pandaLearning, audioAnalysis, chatHistory])
 
   // クリーンアップ
   useEffect(() => {
@@ -176,10 +163,6 @@ export default function Home() {
     if (!speechSynthesis.isSpeaking) {
       await performSpeech(question)
     }
-  }
-
-  const toggleAnalysis = () => {
-    setIsAnalysisEnabled(!isAnalysisEnabled)
   }
 
   const handleShareCard = () => {
@@ -245,8 +228,6 @@ export default function Home() {
       />
 
       <StatusPanel
-        isAnalysisEnabled={isAnalysisEnabled}
-        onToggleAnalysis={toggleAnalysis}
         pandaMemory={pandaLearning.pandaMemory}
         relationshipName={pandaLearning.getIntimacyDisplayLevel()}
         intimacyMessage={pandaLearning.getIntimacyDisplayMessage()}
