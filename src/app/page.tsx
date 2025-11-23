@@ -143,13 +143,13 @@ export default function Home() {
       setTimeout(async () => {
         setSpeaking(false)
 
+        let analysisResult: typeof audioAnalysis.latestAnalysisResult = null
+
         // LLMが有効な場合はLLM結果を待つ、そうでなければローカル解析
         if (llmResponsePromise) {
           const llmResult = await llmResponsePromise
-
           if (llmResult) {
-            // LLM結果で解析結果を設定
-            const analysisResult = {
+            analysisResult = {
               intentResult: {
                 intent: llmResult.intent as 'greeting' | 'playful' | 'hungry',
                 confidence: llmResult.confidence,
@@ -160,27 +160,17 @@ export default function Home() {
               grainTimeline
             }
             setLatestResult(analysisResult)
-            setAnalyzing(false)
-            if (isUserInput) {
-              addMessage(analysisResult)
-            }
-          } else {
-            // LLM失敗時はローカル解析にフォールバック
-            const analysisResult = stopAnalysis(grainTimeline)
-            setAnalyzing(false)
-            if (isUserInput) {
-              addMessage(analysisResult || undefined)
-            }
           }
-        } else {
-          // 解析を停止して結果を処理
-          const analysisResult = stopAnalysis(grainTimeline)
-          setAnalyzing(false)
+        }
 
-          // 解析結果を会話履歴に保存
-          if (isUserInput) {
-            addMessage(analysisResult || undefined)
-          }
+        // LLM未使用またはLLM失敗時はローカル解析
+        if (!analysisResult) {
+          analysisResult = stopAnalysis(grainTimeline)
+        }
+
+        setAnalyzing(false)
+        if (isUserInput) {
+          addMessage(analysisResult || undefined)
         }
       }, finalDuration * 1000)
 
