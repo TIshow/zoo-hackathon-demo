@@ -100,7 +100,7 @@ export default function Home() {
 
         const { intimacyIncreased, newUnlocks: newUnlocksList } = pandaLearning.recordUserConversation({
           userInput: input,
-          pandaReply: { id: actualReply.id, translation: actualReply.translation },
+          pandaReplyId: actualReply.id,
           sessionDuration: Math.max(sessionDuration, 5)
         })
 

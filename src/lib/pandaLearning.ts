@@ -6,10 +6,7 @@ import { SpeechParams } from './pandaSpeech'
 export interface ConversationData {
   timestamp: Date
   userInput: string
-  pandaResponse: {
-    id: number
-    translation: string
-  }
+  pandaReplyId: number
   sessionDuration: number // 会話継続時間（秒）
 }
 
@@ -103,7 +100,7 @@ function createInitialMemory(): PandaMemory {
 export function recordConversation(
   memory: PandaMemory,
   userInput: string,
-  pandaResponse: { id: number; translation: string },
+  pandaReplyId: number,
   sessionDuration: number = 5
 ): PandaMemory {
   const now = new Date()
@@ -117,7 +114,7 @@ export function recordConversation(
   const newConversation: ConversationData = {
     timestamp: now,
     userInput,
-    pandaResponse,
+    pandaReplyId,
     sessionDuration
   }
 

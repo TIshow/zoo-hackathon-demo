@@ -22,10 +22,7 @@ import { type SpeechParams } from '@/lib/pandaSpeech'
 
 export interface ConversationInput {
   userInput: string
-  pandaReply: {
-    id: number
-    translation: string
-  }
+  pandaReplyId: number
   sessionDuration: number
 }
 
@@ -131,7 +128,7 @@ export function usePandaLearning(config: UsePandaLearningConfig): UsePandaLearni
     const updatedMemory = recordConversation(
       pandaMemory,
       input.userInput,
-      input.pandaReply,
+      input.pandaReplyId,
       input.sessionDuration
     )
 

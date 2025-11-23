@@ -79,7 +79,7 @@ export default function ChatHistory({
                   </div>
                   <div className="flex-1">
                     <div className="bg-white border border-gray-200 px-4 py-2 rounded-2xl rounded-tl-sm shadow-sm">
-                      {message.reply?.translation || message.content}
+                      {message.analysisData?.translation || message.content}
                     </div>
                     <div className="text-caption text-gray-400 mt-1">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
