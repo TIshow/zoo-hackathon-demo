@@ -51,15 +51,13 @@ export default function TranslationCaption({
 
   // Start caption animation sequence
   const startCaptionSequence = () => {
-    if (!isActive || grainTimeline.length === 0) return
-
     clearAllTimeouts()
 
     // Phase 1: Show panda sound immediately
     setCaptionState(prev => ({ ...prev, pandaVisible: true }))
 
-    // Phase 2: Show translation after first grain
-    const firstGrainDelay = Math.max(grainTimeline[0]?.startTime || 0, 200)
+    // Phase 2: Show translation after first grain (or immediately if no grains)
+    const firstGrainDelay = grainTimeline.length > 0 ? Math.max(grainTimeline[0]?.startTime || 0, 200) : 200
     const translationTimeout = setTimeout(() => {
       setCaptionState(prev => ({ ...prev, translationVisible: true }))
     }, firstGrainDelay)
@@ -72,7 +70,8 @@ export default function TranslationCaption({
 
   // Effect to start/stop caption sequence
   useEffect(() => {
-    if (isActive && intentResult && pandaSound && translation) {
+    // 解析結果がある場合は表示（isActiveの状態に関係なく）
+    if (intentResult && pandaSound && translation) {
       startCaptionSequence()
     } else if (!isActive && !intentResult) {
       // 解析が無効、または新しい会話が始まる前のみクリア

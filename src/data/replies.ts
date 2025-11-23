@@ -15,3 +15,18 @@ export function selectPandaReply(): PandaReply {
   const randomIndex = Math.floor(Math.random() * PANDA_REPLIES.length);
   return PANDA_REPLIES[randomIndex];
 }
+
+// マイルストーンタイトルのマッピング
+export const MILESTONE_TITLES: Record<string, string> = {
+  chatty_friend: 'おしゃべり好き',
+  close_buddy: '親密な友達',
+  regular_visitor: '常連さん',
+  weekly_friend: '1週間の友',
+  early_bird: '朝の友達',
+  night_owl: '夜ふかし友達',
+  long_talker: 'おしゃべり上手'
+};
+
+export function getMilestoneTitle(id: string): string {
+  return MILESTONE_TITLES[id] || id;
+}

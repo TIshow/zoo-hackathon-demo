@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import MilestoneNotification from '@/components/MilestoneNotification'
 import ShareCardGenerator from '@/components/ShareCardGenerator'
@@ -8,6 +8,7 @@ import { useAudioAnalysis } from '@/hooks/useAudioAnalysis'
 import { usePandaLearning } from '@/hooks/usePandaLearning'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
 import { useChatHistory } from '@/hooks/useChatHistory'
+import { getMilestoneTitle } from '@/data/replies'
 import ChatHistory from '@/components/ChatHistory'
 import FixedInputArea from '@/components/FixedInputArea'
 import StatusPanel from '@/components/StatusPanel'
@@ -27,7 +28,6 @@ export default function Home() {
   const pandaLearning = usePandaLearning({
     enabled: true
   })
-  const autoSpeakTimer = useRef<NodeJS.Timeout | null>(null)
 
   // クライアントサイドでの初期化
   useEffect(() => {
@@ -84,11 +84,9 @@ export default function Home() {
       const { reply: actualReply, speechResult } = result
 
       speechSynthesis.setCurrentReply(actualReply)
-      if (isUserInput) {
-        setUserInput('')
-      }
 
       if (isUserInput) {
+        setUserInput('')
         const startTime = pandaLearning.sessionStartTime || new Date()
         const sessionDuration = Math.floor((Date.now() - startTime.getTime()) / 1000)
 
@@ -112,17 +110,23 @@ export default function Home() {
 
       const finalDuration = speechResult.actualDuration + 0.5
 
+      // 必要な関数を先に取得（クロージャー問題を回避）
+      const stopAnalysis = audioAnalysis.stopAnalysisAndProcess
+      const setAnalyzing = audioAnalysis.setIsAnalyzing
+      const setSpeaking = speechSynthesis.setIsSpeaking
+      const addMessage = chatHistory.addPandaMessage
+
       // 音声再生完了後の処理
       setTimeout(() => {
-        speechSynthesis.setIsSpeaking(false)
+        setSpeaking(false)
 
         // 解析を停止して結果を処理
-        const analysisResult = audioAnalysis.stopAnalysisAndProcess(speechResult.grainTimeline)
-        audioAnalysis.setIsAnalyzing(false)
+        const analysisResult = stopAnalysis(speechResult.grainTimeline)
+        setAnalyzing(false)
 
         // 解析結果を会話履歴に保存
         if (isUserInput) {
-          chatHistory.addPandaMessage(analysisResult || undefined)
+          addMessage(analysisResult || undefined)
         }
       }, finalDuration * 1000)
 
@@ -135,9 +139,6 @@ export default function Home() {
   // クリーンアップ
   useEffect(() => {
     return () => {
-      if (autoSpeakTimer.current) {
-        clearTimeout(autoSpeakTimer.current)
-      }
       if (speechSynthesis.audioContext) {
         speechSynthesis.audioContext.close()
       }
@@ -165,20 +166,6 @@ export default function Home() {
     if (!speechSynthesis.isSpeaking && !speechSynthesis.isThinking) {
       await performSpeech(voiceText)
     }
-  }
-
-  // マイルストーンIDからタイトルを取得する関数
-  const getMilestoneTitle = (id: string): string => {
-    const milestoneData: Record<string, string> = {
-      chatty_friend: 'おしゃべり好き',
-      close_buddy: '親密な友達',
-      regular_visitor: '常連さん',
-      weekly_friend: '1週間の友',
-      early_bird: '朝の友達',
-      night_owl: '夜ふかし友達',
-      long_talker: 'おしゃべり上手'
-    }
-    return milestoneData[id] || id
   }
 
   const isDisabled = speechSynthesis.isSpeaking || speechSynthesis.isThinking
