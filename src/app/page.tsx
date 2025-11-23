@@ -9,6 +9,8 @@ import { usePandaLearning } from '@/hooks/usePandaLearning'
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis'
 import { useChatHistory } from '@/hooks/useChatHistory'
 import { getMilestoneTitle } from '@/data/replies'
+import { generatePandaResponse } from '@/lib/llm/client'
+import type { ConversationMessage } from '@/lib/llm/types'
 import ChatHistory from '@/components/ChatHistory'
 import FixedInputArea from '@/components/FixedInputArea'
 import StatusPanel from '@/components/StatusPanel'
@@ -16,6 +18,7 @@ import StatusPanel from '@/components/StatusPanel'
 export default function Home() {
   const [userInput, setUserInput] = useState('')
   const [isClientMounted, setIsClientMounted] = useState(false)
+  const [isLLMEnabled, setIsLLMEnabled] = useState(false)
   // Custom Hooks
   const chatHistory = useChatHistory()
   const speechSynthesis = useSpeechSynthesis({
@@ -115,18 +118,69 @@ export default function Home() {
       const setAnalyzing = audioAnalysis.setIsAnalyzing
       const setSpeaking = speechSynthesis.setIsSpeaking
       const addMessage = chatHistory.addPandaMessage
+      const setLatestResult = audioAnalysis.setLatestAnalysisResult
+      const grainTimeline = speechResult.grainTimeline
+
+      // LLMが有効な場合は並行してAPI呼び出し
+      let llmResponsePromise: Promise<import('@/lib/llm/types').LLMResponse | null> | null = null
+      if (isLLMEnabled && isUserInput) {
+        // 会話履歴をLLM用に変換
+        const conversationHistory: ConversationMessage[] = chatHistory.messages
+          .slice(-10) // 直近10件のみ
+          .map(msg => ({
+            role: msg.type === 'user' ? 'user' as const : 'assistant' as const,
+            content: msg.content
+          }))
+
+        llmResponsePromise = generatePandaResponse(input, conversationHistory)
+          .catch(error => {
+            console.error('LLM request failed, falling back to local analysis:', error)
+            return null
+          })
+      }
 
       // 音声再生完了後の処理
-      setTimeout(() => {
+      setTimeout(async () => {
         setSpeaking(false)
 
-        // 解析を停止して結果を処理
-        const analysisResult = stopAnalysis(speechResult.grainTimeline)
-        setAnalyzing(false)
+        // LLMが有効な場合はLLM結果を待つ、そうでなければローカル解析
+        if (llmResponsePromise) {
+          const llmResult = await llmResponsePromise
 
-        // 解析結果を会話履歴に保存
-        if (isUserInput) {
-          addMessage(analysisResult || undefined)
+          if (llmResult) {
+            // LLM結果で解析結果を設定
+            const analysisResult = {
+              intentResult: {
+                intent: llmResult.intent as 'greeting' | 'playful' | 'hungry',
+                confidence: llmResult.confidence,
+                features: { centroidAvg: 0, rmsAvg: 0, rmsMax: 0, centroidMax: 0, sampleCount: 0 }
+              },
+              pandaSound: llmResult.pandaSound,
+              translation: llmResult.translation,
+              grainTimeline
+            }
+            setLatestResult(analysisResult)
+            setAnalyzing(false)
+            if (isUserInput) {
+              addMessage(analysisResult)
+            }
+          } else {
+            // LLM失敗時はローカル解析にフォールバック
+            const analysisResult = stopAnalysis(grainTimeline)
+            setAnalyzing(false)
+            if (isUserInput) {
+              addMessage(analysisResult || undefined)
+            }
+          }
+        } else {
+          // 解析を停止して結果を処理
+          const analysisResult = stopAnalysis(grainTimeline)
+          setAnalyzing(false)
+
+          // 解析結果を会話履歴に保存
+          if (isUserInput) {
+            addMessage(analysisResult || undefined)
+          }
         }
       }, finalDuration * 1000)
 
@@ -134,7 +188,7 @@ export default function Home() {
       console.error('Speech synthesis failed:', error)
       speechSynthesis.setIsSpeaking(false)
     }
-  }, [speechSynthesis, pandaLearning, audioAnalysis, chatHistory])
+  }, [speechSynthesis, pandaLearning, audioAnalysis, chatHistory, isLLMEnabled])
 
   // クリーンアップ
   useEffect(() => {
@@ -216,6 +270,8 @@ export default function Home() {
         getMilestoneTitle={getMilestoneTitle}
         latestAnalysisResult={audioAnalysis.latestAnalysisResult}
         isAnalyzing={audioAnalysis.isAnalyzing}
+        isLLMEnabled={isLLMEnabled}
+        onToggleLLM={setIsLLMEnabled}
       />
 
       <footer className="bg-white/60 backdrop-blur-sm border-t border-white/30 p-4 text-center flex-shrink-0">

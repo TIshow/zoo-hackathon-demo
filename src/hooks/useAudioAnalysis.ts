@@ -37,6 +37,7 @@ export interface UseAudioAnalysisReturn {
   startAnalysis: (bridge?: AnalyserBridge) => void
   stopAnalysisAndProcess: (grainTimeline: GrainTimeline[]) => AnalysisResult | null
   setIsAnalyzing: (value: boolean) => void
+  setLatestAnalysisResult: (result: AnalysisResult | null) => void
 }
 
 export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalysisReturn {
@@ -149,6 +150,7 @@ export function useAudioAnalysis(config: UseAudioAnalysisConfig): UseAudioAnalys
     initializeAnalyser,
     startAnalysis,
     stopAnalysisAndProcess,
-    setIsAnalyzing
+    setIsAnalyzing,
+    setLatestAnalysisResult
   }
 }

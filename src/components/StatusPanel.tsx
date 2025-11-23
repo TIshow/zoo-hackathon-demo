@@ -22,6 +22,8 @@ interface StatusPanelProps {
     grainTimeline: GrainTimeline[]
   } | null
   isAnalyzing: boolean
+  isLLMEnabled: boolean
+  onToggleLLM: (enabled: boolean) => void
 }
 
 export default function StatusPanel({
@@ -33,7 +35,9 @@ export default function StatusPanel({
   isClientMounted,
   getMilestoneTitle,
   latestAnalysisResult,
-  isAnalyzing
+  isAnalyzing,
+  isLLMEnabled,
+  onToggleLLM
 }: StatusPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -54,6 +58,28 @@ export default function StatusPanel({
       {isExpanded && (
         <div className="mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-10rem)] bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden flex flex-col animate-scale-in">
           <div className="p-4 space-y-4 overflow-y-auto flex-1">
+            {/* LLM設定 */}
+            <div className="border-b border-gray-200 pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🤖</span>
+                  <span className="text-heading-sm text-gray-800">Claude AI</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isLLMEnabled}
+                    onChange={(e) => onToggleLLM(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                </label>
+              </div>
+              <p className="text-caption mt-1">
+                {isLLMEnabled ? 'AIが文脈を理解して返答' : '簡易モード（API節約）'}
+              </p>
+            </div>
+
             {/* 親密度ゲージ */}
             <div className="border-b border-gray-200 pb-4">
               <IntimacyGauge
