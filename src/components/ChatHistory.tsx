@@ -1,21 +1,6 @@
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
-import type { PandaReply } from '@/data/replies'
-import type { IntentResult, GrainTimeline } from '@/types/audio'
-
-interface ChatMessage {
-  id: string
-  type: 'user' | 'panda'
-  content: string
-  timestamp: Date
-  reply?: PandaReply
-  analysisData?: {
-    intentResult: IntentResult | null
-    pandaSound: string
-    translation: string
-    grainTimeline: GrainTimeline[]
-  }
-}
+import type { ChatMessage } from '@/hooks/useChatHistory'
 
 interface ChatHistoryProps {
   messages: ChatMessage[]
@@ -115,5 +100,3 @@ export default function ChatHistory({
     </div>
   )
 }
-
-export type { ChatMessage }

@@ -121,16 +121,8 @@ export default function Home() {
         audioAnalysis.setIsAnalyzing(false)
 
         // 解析結果を会話履歴に保存
-        if (isUserInput && analysisResult) {
-          const analysisData = {
-            intentResult: analysisResult.intentResult,
-            pandaSound: analysisResult.pandaSound,
-            translation: analysisResult.translation,
-            grainTimeline: analysisResult.grainTimeline
-          }
-          chatHistory.addPandaMessage(actualReply, analysisData)
-        } else if (isUserInput) {
-          chatHistory.addPandaMessage(actualReply, undefined)
+        if (isUserInput) {
+          chatHistory.addPandaMessage(analysisResult || undefined)
         }
       }, finalDuration * 1000)
 
